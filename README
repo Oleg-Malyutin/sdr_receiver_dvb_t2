@@ -1,0 +1,45 @@
+# This file is part of sdr_receiver_dvb_t2
+# Author: Oleg Malyutin
+# Email: <oleg.radioprograms@gmail.com>
+
+This is a Software Defined Radio(SDR) project implementing a DVB-T2 receiver.
+(Caution! it's not even alpha. But it works)
+
+Supported devices:
+1. SdrPlay
+2. ...
+
+Received DVB-T2 signal parameters:
+1. SISO and one RT-TX
+2. 8MHz 16K or 32K only (32K tested)
+3. Output Transport Stream(TS) (HEM mode tested)
+Not supported:
+1. FEF part
+2. T2-Lite
+
+The project was created using the Qt5 framework.
+
+To build the project, you need to install
+the library FFTW3: 
+
+http://www.fftw.org/
+
+
+Tested configurations:
+OS: Linux Mint 19 Cinnamon 3.8.9
+Processor: Intel© Core™ i5-8600 CPU @ 3.10GHz × 6
+(Surprisingly, USB2.0 is enough)
+
+To view the video signal, a VLC player with 
+udp://@:7654 parameters was used (URL)
+
+
+
+
+
+Used in the project Qt C++ widget QCustomPlot
+(necessary files are included in the project):
+https://www.qcustomplot.com/
+
+The LDPC block is a port of the code in:
+https://github.com/drmpeg/gr-dvbs2rx
