@@ -28,7 +28,6 @@ http://www.fftw.org/
 Tested configurations:
 OS: Linux Mint 19 Cinnamon 3.8.9
 Processor: Intel© Core™ i5-8600 CPU @ 3.10GHz × 6
-(Surprisingly, USB2.0 is enough)
 
 To view the video signal, a VLC player with 
 udp://@:7654 parameters was used (URL)
