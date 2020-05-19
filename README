@@ -4,11 +4,15 @@
 
 This is a Software Defined Radio(SDR) project implementing a DVB-T2 receiver.
 
+The project was created using the Qt5 framework.
+To build the project, you need to install
+the library FFTW3: http://www.fftw.org
 
 Supported devices:
-1. SdrPlay
-2. AirSpy
+1. SdrPlay (need to install API/HW DRIVER – V2.*(but not V3.*) from https://www.sdrplay.com) 
+2. AirSpy (need to install libusb-1.0 from https://libusb.info)
 3. ..
+
 
 Received DVB-T2 signal parameters:
 1. SISO and one RT-TX
@@ -17,13 +21,6 @@ Received DVB-T2 signal parameters:
 Not supported:
 1. FEF part
 2. T2-Lite
-
-The project was created using the Qt5 framework.
-
-To build the project, you need to install
-the library FFTW3: 
-
-http://www.fftw.org/
 
 
 Tested configurations:
