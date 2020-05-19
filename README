@@ -3,11 +3,12 @@
 # Email: <oleg.radioprograms@gmail.com>
 
 This is a Software Defined Radio(SDR) project implementing a DVB-T2 receiver.
-(Caution! it's not even alpha. But it works)
+
 
 Supported devices:
 1. SdrPlay
-2. ...
+2. AirSpy
+3. ..
 
 Received DVB-T2 signal parameters:
 1. SISO and one RT-TX
@@ -28,6 +29,7 @@ http://www.fftw.org/
 Tested configurations:
 OS: Linux Mint 19 Cinnamon 3.8.9
 Processor: Intel© Core™ i5-8600 CPU @ 3.10GHz × 6
+
 
 To view the video signal, a VLC player with 
 udp://@:7654 parameters was used (URL)
