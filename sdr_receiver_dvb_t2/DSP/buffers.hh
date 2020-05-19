@@ -71,7 +71,6 @@ private:
 
 public:
     save_buffer(){ reset();}
-//    ~save_buffer();
 
     void write(T &_in)
     {
@@ -87,9 +86,6 @@ public:
         memmove(buffer + len_copy, buffer, sizeof(T) * static_cast<unsigned int>(idx));
         memcpy(buffer, temp, sizeof(T) * static_cast<unsigned int>(len_copy));
         return buffer;
-
-//        memcpy(_out, buffer + idx, sizeof(T) * static_cast<unsigned int>(len_copy));
-//        memcpy(_out + len_copy, buffer, sizeof(T) * static_cast<unsigned int>(idx));
     }
     void reset(){ memset(buffer, 0, sizeof(T) * static_cast<unsigned int>(len));}
 };
