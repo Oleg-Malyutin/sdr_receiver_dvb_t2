@@ -13,7 +13,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 QT       += core gui
-QT       += charts multimedia
+#QT       += charts multimedia
 QT       += network
 QT       += printsupport
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -50,11 +50,17 @@ SOURCES += \
     DVB_T2/p2_symbol.cpp \
     DVB_T2/pilot_generator.cpp \
     DVB_T2/time_deinterleaver.cpp \
+    libairspy/src/airspy.c \
+    libairspy/src/iqconverter_float.c \
+    libairspy/src/iqconverter_int16.c \
+    libairspy/vc/getopt/getopt.c \
+    libairspy/vc/getopt/getopt1.c \
     main.cpp \
     main_window.cpp \
     plot.cpp \
     qcustomplot.cpp \
-    sdrplay.cpp
+    rx_airspy.cpp \
+    rx_sdrplay.cpp
 
 HEADERS += \
     DSP/buffers.hh \
@@ -86,19 +92,50 @@ HEADERS += \
     DVB_T2/p2_symbol.h \
     DVB_T2/pilot_generator.h \
     DVB_T2/time_deinterleaver.h \
+    libairspy/src/airspy.h \
+    libairspy/src/airspy_commands.h \
+    libairspy/src/filters.h \
+    libairspy/src/iqconverter_float.h \
+    libairspy/src/iqconverter_int16.h \
+    libairspy/src/win32/airspy.rc \
+    libairspy/vc/getopt/getopt.h \
     main_window.h \
     plot.h \
     qcustomplot.h \
-    sdrplay.h
+    rx_airspy.h \
+    rx_sdrplay.h
 
 FORMS += \
     main_window.ui
 
 unix|win32: LIBS += -lfftw3f
 unix|win32: LIBS += -lmirsdrapi-rsp
+unix|win32: LIBS += -lusb-1.0
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+DISTFILES += \
+    libairspy/CMakeLists.txt \
+    libairspy/README.md \
+    libairspy/libairspy.pc.in \
+    libairspy/src/CMakeLists.txt \
+    libairspy/vc/airspy_2013.sln \
+    libairspy/vc/airspy_2013.vcxproj \
+    libairspy/vc/airspy_gpio_2013.vcxproj \
+    libairspy/vc/airspy_gpiodir_2013.vcxproj \
+    libairspy/vc/airspy_info_2013.vcxproj \
+    libairspy/vc/airspy_lib_version_2013.vcxproj \
+    libairspy/vc/airspy_r820t_2013.vcxproj \
+    libairspy/vc/airspy_rx_2013.vcxproj \
+    libairspy/vc/airspy_si5351c_2013.vcxproj \
+    libairspy/vc/airspy_spiflash_2013.vcxproj \
+    libairspy/vc/getopt/LICENSE.md \
+    libairspy/vc/getopt_2013.vcxproj \
+    libairspy/vc/libs/Win32/libusb-1.0.dll \
+    libairspy/vc/libs/Win32/pthreadVCE2.dll \
+    libairspy/vc/libs/x64/libusb-1.0.dll \
+    libairspy/vc/libs/x64/pthreadVC2.dll
 

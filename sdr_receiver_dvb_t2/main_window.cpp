@@ -23,6 +23,7 @@ main_window::main_window(QWidget *parent)
     ui->setupUi(this);
 
     connect(ui->action_sdrplay, SIGNAL(triggered()), this, SLOT(open_sdrplay()));
+    connect(ui->action_airspy, SIGNAL(triggered()), this, SLOT(open_airspy()));
     connect(ui->action_exit, SIGNAL(triggered()), this, SLOT(close()));
 
     ui->tab_widget->setCurrentIndex(0);
@@ -74,12 +75,18 @@ void main_window::get_device()
 
 }
 //----------------------------------------------------------------------------------------------------
+void main_window::on_check_box_agc_stateChanged(int arg1)
+{
+    if(arg1 == 2) ui->line_edit_gain->setEnabled(false);
+    else ui->line_edit_gain->setEnabled(true);
+}
+//----------------------------------------------------------------------------------------------------
 void main_window::open_sdrplay()
 {
     int err;
     char* ser_no = nullptr;
     unsigned char hw_ver;
-    ptr_sdrplay = new sdrplay;
+    ptr_sdrplay = new rx_sdrplay;
     err = ptr_sdrplay->get_sdrplay(ser_no, hw_ver);
     ui->text_log->insertPlainText("Get SdrPlay:"  " " +
                                   QString::fromStdString(ptr_sdrplay->error_sdrplay(err)) + "\n");
@@ -88,8 +95,9 @@ void main_window::open_sdrplay()
     ui->label_name->setText("Name : SdrPlay");
     ui->label_ser_no->setText("Serial No : " + QString::fromUtf8(ser_no));
     ui->label_hw_ver->setText("Hardware ver : " + QString::number(hw_ver));
+    ui->label_gain->setText("gain reduction(0-85):");
 
-    select_device = id_sdrplay;
+    id_device = id_sdrplay;
     ui->push_button_start->setEnabled(true);
 }
 //----------------------------------------------------------------------------------------------------
@@ -115,9 +123,9 @@ void main_window::start_sdrplay()
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
     thread->start(QThread::TimeCriticalPriority);
 
-    connect(ptr_sdrplay, &sdrplay::sdrplay_status, this, &main_window::sdrplay_status);
-    connect(ptr_sdrplay, &sdrplay::radio_frequency, this, &main_window::radio_frequency);
-    connect(ptr_sdrplay, &sdrplay::device_gain, this, &main_window::device_gain);
+    connect(ptr_sdrplay, &rx_sdrplay::sdrplay_status, this, &main_window::sdrplay_status);
+    connect(ptr_sdrplay, &rx_sdrplay::radio_frequency, this, &main_window::radio_frequency);
+    connect(ptr_sdrplay, &rx_sdrplay::device_gain, this, &main_window::device_gain);
 }
 //----------------------------------------------------------------------------------------------------
 void main_window::sdrplay_status(int _err)
@@ -126,13 +134,71 @@ void main_window::sdrplay_status(int _err)
                                   QString::fromStdString(ptr_sdrplay->error_sdrplay(_err)) + "\n");
 }
 //----------------------------------------------------------------------------------------------------
+void main_window::airspy_status(int _err)
+{
+    ui->text_log->insertPlainText("Status AirSpy:"  " "  +
+                                  QString::fromStdString(ptr_airspy->error_airspy(_err)) + "\n");
+}
+//----------------------------------------------------------------------------------------------------
+void main_window::open_airspy()
+{
+    int err;
+    string ser_no;
+    string hw_ver;
+    ptr_airspy = new rx_airspy;
+    err = ptr_airspy->get_airspy(ser_no, hw_ver);
+    ui->text_log->insertPlainText("Get AirSpy:"  " " +
+                                  QString::fromStdString(ptr_airspy->error_airspy(err)) + "\n");
+    if(err < 0) return;
+
+    ui->label_name->setText("Name : AirSpy");
+    ui->label_ser_no->setText("Serial No : " + QString::fromStdString(ser_no));
+    ui->label_hw_ver->setText("HW: " + QString::fromStdString(hw_ver));
+    ui->label_gain->setText("gain (0-21):");
+
+    id_device = id_airspy;
+    ui->push_button_start->setEnabled(true);
+
+}
+//----------------------------------------------------------------------------------------------------
+void main_window::start_airspy()
+{
+    uint32_t rf_fraquency_hz;
+    int gain;
+    int err;
+    rf_fraquency_hz = static_cast<uint32_t>(ui->line_edit_rf->text().toULong());
+    gain = static_cast<uint8_t>(ui->line_edit_gain->text().toUInt());
+    if(ui->check_box_agc->isChecked()) gain = -1;
+    err = ptr_airspy->init_airspy(rf_fraquency_hz, gain);
+    ui->text_log->insertPlainText("Init AirSpy:"  " "  +
+                                  QString::fromStdString(ptr_airspy->error_airspy(err)) + "\n");
+    if(err !=0) return;
+
+    thread = new QThread;
+    ptr_airspy->moveToThread(thread);
+    connect(thread, SIGNAL(started()), ptr_airspy, SLOT(start()));
+    connect(this,SIGNAL(stop_device()),ptr_airspy,SLOT(stop()),Qt::DirectConnection);
+    connect(ptr_airspy, SIGNAL(finished()), ptr_airspy, SLOT(deleteLater()));
+    connect(ptr_airspy, SIGNAL(finished()), thread, SLOT(quit()),Qt::DirectConnection);
+    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+    thread->start(QThread::TimeCriticalPriority);
+
+    connect(ptr_airspy, &rx_airspy::airspy_status, this, &main_window::airspy_status);
+    connect(ptr_airspy, &rx_airspy::radio_frequency, this, &main_window::radio_frequency);
+    connect(ptr_airspy, &rx_airspy::device_gain, this, &main_window::device_gain);
+}
+//----------------------------------------------------------------------------------------------------
 void main_window::on_push_button_start_clicked()
 {
     ui->push_button_stop->setEnabled(true);
-    switch (select_device) {
+    switch (id_device) {
     case id_sdrplay:
         start_sdrplay();
         dvbt2 = ptr_sdrplay->frame;
+        break;
+    case id_airspy:
+        start_airspy();
+        dvbt2 = ptr_airspy->frame;
         break;
     }
     for(int i = 1; i < ui->tab_widget->count(); ++i) ui->tab_widget->setTabEnabled(i, true);
@@ -215,7 +281,16 @@ void main_window::radio_frequency(double _rf)
 //----------------------------------------------------------------------------------------------------
 void main_window::device_gain(int _gain)
 {
-    ui->label_info_gain->setText("gain reducton (dB) : " + QString::number(_gain));
+    QString str_gain = "";
+    switch (id_device) {
+    case id_sdrplay:
+        str_gain = "gain reduction :  ";
+        break;
+    case id_airspy:
+        str_gain = "gain :   ";
+        break;
+    }
+    ui->label_info_gain->setText(str_gain + QString::number(_gain));
 }
 //----------------------------------------------------------------------------------------------------
 void main_window::on_tab_widget_currentChanged(int index)
@@ -353,17 +428,18 @@ void main_window::ts_stage(QString _info)
 {
     static QString old_stage = "";
     static int count = 0;
-    if(_info != old_stage) {
-        ui->text_edit_ts_stage->clear();
-        ui->text_edit_ts_stage->append(_info);
+    QString info = "";
+    ui->text_edit_ts_stage->clear();
+    if(_info != old_stage) {  
+        info = _info;
         old_stage = _info;
         count = 0;
     }
     else {
         ++count;
-        ui->text_edit_ts_stage->clear();
-        ui->text_edit_ts_stage->append(_info + " (count.. " + QString::number(count) + ")");
+        info = _info + " (count.. " + QString::number(count) + ")";
     }
+    ui->text_edit_ts_stage->append(info);
 }
 //----------------------------------------------------------------------------------------------------
 void main_window::on_push_button_ts_apply_clicked()
@@ -424,3 +500,5 @@ void main_window::on_push_button_ts_open_file_clicked()
     else ui->radio_button_ts_net->setChecked(false);
 }
 //----------------------------------------------------------------------------------------------------
+
+

@@ -54,6 +54,8 @@ private:
     type_graph type;
     QString name;
     void greate_graph(int _len_data, complex *_data = nullptr);
+
+    void calc_frame_per_sec();
 };
 
 #endif // PLOT_H

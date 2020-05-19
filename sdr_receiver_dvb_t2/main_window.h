@@ -17,7 +17,8 @@
 
 #include <QMainWindow>
 
-#include "sdrplay.h"
+#include "rx_sdrplay.h"
+#include "rx_airspy.h"
 #include "plot.h"
 #include "DVB_T2/dvbt2_frame.h"
 
@@ -45,6 +46,8 @@ private slots:
     void get_device();
     void open_sdrplay();
     void sdrplay_status(int _err);
+    void airspy_status(int _err);
+    void open_airspy();
     void radio_frequency(double _rf);
     void device_gain(int _gain);
     void bad_signal();
@@ -66,17 +69,18 @@ private slots:
     void on_radio_button_ts_file_toggled(bool checked);
     void on_line_edit_ts_udp_port_textChanged(const QString &arg1);
 
+    void on_check_box_agc_stateChanged(int arg1);
+
 private:
     Ui::main_window *ui;
-    enum id_device{
-        id_sdrplay = 0,
-        id_airspy,
-    };
-    int select_device;
+
+    id_device_t id_device;
     dvbt2_frame* dvbt2;
     QThread* thread = nullptr;
-    sdrplay* ptr_sdrplay;
+    rx_sdrplay* ptr_sdrplay;
+    rx_airspy* ptr_airspy;
     void start_sdrplay();
+    void start_airspy();
     void connect_info();
     void disconnect_info();
     QButtonGroup* button_group_p2_symbol;

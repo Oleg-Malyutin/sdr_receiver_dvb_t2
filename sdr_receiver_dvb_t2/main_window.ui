@@ -69,7 +69,7 @@
            <item row="4" column="0">
             <widget class="QLabel" name="label_info_gain">
              <property name="text">
-              <string>gain reduction (dB) :</string>
+              <string>gain  :</string>
              </property>
             </widget>
            </item>
@@ -172,6 +172,9 @@
              <property name="text">
               <string>AGC</string>
              </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
             </widget>
            </item>
            <item row="12" column="0" colspan="2">
@@ -189,6 +192,9 @@
            </item>
            <item row="5" column="2">
             <widget class="QLineEdit" name="line_edit_gain">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="text">
               <string>72</string>
              </property>
@@ -200,7 +206,7 @@
            <item row="5" column="0" colspan="2">
             <widget class="QLabel" name="label_gain">
              <property name="text">
-              <string>gain reduction (dB) :</string>
+              <string>gain  :</string>
              </property>
             </widget>
            </item>
@@ -919,6 +925,7 @@
       <string>Open</string>
      </property>
      <addaction name="action_sdrplay"/>
+     <addaction name="action_airspy"/>
     </widget>
     <addaction name="menu_open"/>
     <addaction name="action_exit"/>
@@ -934,6 +941,11 @@
   <action name="action_sdrplay">
    <property name="text">
     <string>SdrPlay</string>
+   </property>
+  </action>
+  <action name="action_airspy">
+   <property name="text">
+    <string>AirSpy</string>
    </property>
   </action>
  </widget>

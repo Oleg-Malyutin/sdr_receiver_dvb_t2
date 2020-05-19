@@ -46,6 +46,9 @@ void plot::replace_spectrograph(const int _len_data, complex *_data)
     }
     current_plot->graph(0)->data()->clear();
     current_plot->graph(0)->setData(x_data, y_data);
+
+//    calc_frame_per_sec();
+
     emit  repaint_plot();
 }
 //-----------------------------------------------------------------------------------------------
@@ -191,4 +194,22 @@ void plot::greate_graph(int _len_data, complex *_data)
     current_plot->graph(0)->data()->clear();
 }
 //-----------------------------------------------------------------------------------------------
+void plot::calc_frame_per_sec()
+{
+    //calculate frames per second:
+    float keyt = 0.0f;
+    keyt = QDateTime::currentDateTime().toMSecsSinceEpoch()/1000.0f;
+//    qDebug() << "keyt " << keyt;
+    static float lastFpsKey;
+    static int frameCount = 0;
+    ++frameCount;
+    if (keyt - lastFpsKey > 0.00001f) // average fps over 2 seconds
+    {
+//        ui->label->setText(QString::number(frameCount/(keyt-lastFpsKey)));
+        qDebug() << "frameCount " << frameCount/(keyt - lastFpsKey);
 
+        lastFpsKey = keyt;
+        frameCount = 0;
+    }
+}
+//-----------------------------------------------------------------------------------------------
