@@ -155,6 +155,7 @@ void ldpc_decoder::execute(int* _idx_plp_simd, l1_postsignalling _l1_post, int _
 {
     mutex_in->lock();
     signal_in->wakeOne();
+
     int* plp_id = _idx_plp_simd;
     l1_postsignalling l1_post = _l1_post;
     int8_t* in = _in;
@@ -252,7 +253,7 @@ void ldpc_decoder::execute(int* _idx_plp_simd, l1_postsignalling _l1_post, int _
     int trials = TRIALS;
     int count = (*p_decode)(simd, simd + k_ldpc, trials, SIZEOF_SIMD);
     if (count < 0) {
-//        std::cerr << "LDPC decoder could not recover the codeword!" << std::endl;
+        qDebug() << "LDPC decoder could not recover the codeword!";
     }
 
     int n = 0;

@@ -26,7 +26,6 @@
 #define P1_A_PART           1024
 #define P1_LEN              2048
 #define P1_FREQUENCY_SHIFT  1024
-#define P1_CENTER_SUBCAR    426
 #define P1_CARRIER_SPASING  (SAMPLE_RATE / 1024.0f) //Hz
 #define P1_ACTIVE_CARRIERS  384
 
@@ -55,9 +54,9 @@ private:
     sum_of_buffer<complex, P1_B_PART>       average_b;
     sum_of_buffer<complex, P1_C_PART>       average_c;
     save_buffer<complex, P1_LEN>            p1_buffer;
-    save_buffer<complex, P1_LEN>            cor_buffer;
+    save_buffer<complex, P1_A_PART>         cor_buffer;
     float correlation;
-    const float begin_threshold = 1.0e+4f;// FIX ME;
+    const float begin_threshold = 1.5e+5f;// FIX ME;
     const float end_threshold = begin_threshold * 0.5f;
     float max_correlation = 0.0;
     bool correlation_detect = false;
@@ -65,20 +64,17 @@ private:
     complex* cor_os;
     int len_p1 = 0;
     int check_len_p1;
+    bool signal_shut = false;
+    bool p1_decoded = false;
 
     fast_fourier_transform* fft;
     complex* in_fft;
     complex* p1_fft;
-
-    const int first_active_carrier_fft = 130;   // in fft 1024
     const int first_active_carrier = 86;
-    const float active_carrier_threshold = 20;
-
     int p1_randomize[P1_ACTIVE_CARRIERS];
     void init_p1_randomize();
     complex p1_dbpsk[P1_ACTIVE_CARRIERS];
-    bool already_decoded = false;
-    bool demodulate(dvbt2_parameters &_dvbt2);
+    bool demodulate(complex *_p1, dvbt2_parameters &_dvbt2);
 
     const int p1_active_carriers[P1_ACTIVE_CARRIERS] =
     {

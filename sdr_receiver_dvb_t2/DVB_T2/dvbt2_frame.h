@@ -33,12 +33,17 @@
 #include "fc_symbol.h"
 #include "time_deinterleaver.h"
 
+enum id_device_t{
+    id_sdrplay = 0,
+    id_airspy,
+};
+
 class dvbt2_frame : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit dvbt2_frame(QWaitCondition* _signal_in, QMutex* _mutex_in,
+    explicit dvbt2_frame(QWaitCondition* _signal_in, QMutex* _mutex_in, id_device_t _id_device,
                          int _len_in_max, int _len_block, float _sample_rate, QObject *parent = nullptr);
     ~dvbt2_frame();
 
@@ -65,7 +70,7 @@ signals:
     void finished();
 
 public slots:
-    void execute(int _len_in, short* _i_in, short* _q_in, bool _frequence_changed, bool _gain_changed);
+    void execute(int _len_in, int16_t* _i_in, int16_t* _q_in, bool _frequence_changed, bool _gain_changed);
     void stop();
 
 private:
@@ -75,15 +80,15 @@ private:
     QMutex* mutex_out;
     QWaitCondition* signal_out;
 
+    id_device_t id_device;
+    int convert_input = 1;
+    float short_to_float;
+
     int len_in_max;
     int len_block;
     int remain = 0;
     int chunk = 0;
     int est_chunk = 0;
-//    const float short_to_float = 1.0f / 4096.0f;
-//    const float short_to_float = 1.0f / 8192.0f;
-//    const float short_to_float = 1.0f / 16384.0f;
-    const float short_to_float = 1.0f / 3.2768e+4f;
 
     static constexpr float dc_ratio = 1.0e-7f;
 //    static constexpr float dc_ratio = 1.0f / SAMPLE_RATE / M_PI_X_2;//3.5e-8f;
@@ -99,14 +104,17 @@ private:
     exponential_averager<float, float, theta_ratio> exp_avg_theta3;
 
     float phase_nco = 0.0f;
+
     float frequancy_offset = 0.0f;
-    static constexpr float k_proportional_fq = 0.7f;
+    static constexpr float k_proportional_fq = 0.05f;
     static constexpr float max_integral_fq = 1.0e-5f;
     pid_controller<float, k_proportional_fq, max_integral_fq> loop_filter_frequancy_offset;
+
     float sample_rate_offset = 0.0f;
-    static constexpr float k_proportional_fs = 0.3f;
+    static constexpr float k_proportional_fs = 0.01f;
     static constexpr float max_integral_fs = 1.0e-5f;
     pid_controller<float, k_proportional_fs, max_integral_fs> loop_filter_sample_rate_offset;
+
     float phase_offset = 0.0f;
     complex* out_derotate_sample;
     const int upsample = DECIMATION_STEP;
@@ -146,6 +154,8 @@ private:
     bool change_gain = false;
     int gain_offset = 0;
     bool check_gain = false;
+    float level_max;
+    float level_min;
 
     void symbol_acquisition(int _len_in, complex* _in, bool& _frequency_changed,
                             float &_frequancy_offset, float &_phase_offset,

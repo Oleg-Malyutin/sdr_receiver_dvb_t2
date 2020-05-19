@@ -20,11 +20,12 @@
 #include "DSP/fast_math.h"
 
 //-----------------------------------------------------------------------------------------------
-dvbt2_frame::dvbt2_frame(QWaitCondition *_signal_in, QMutex *_mutex_in,
+dvbt2_frame::dvbt2_frame(QWaitCondition *_signal_in, QMutex *_mutex_in, id_device_t _id_device,
                          int _len_in_max, int _len_block, float _sample_rate, QObject *parent) :
     QObject(parent),
     mutex_in(_mutex_in),
     signal_in(_signal_in),
+    id_device(_id_device),
     len_in_max(_len_in_max),
     len_block(_len_block),
     sample_rate(_sample_rate)
@@ -40,6 +41,21 @@ dvbt2_frame::dvbt2_frame(QWaitCondition *_signal_in, QMutex *_mutex_in,
     unsigned int max_len_symbol = FFT_32K + FFT_32K / 4;
     buffer_sym = new complex[max_len_symbol];
     memset(buffer_sym, 0, sizeof(complex) * static_cast<uint>(max_len_symbol));
+
+    switch (id_device) {
+    case id_sdrplay:
+        convert_input = 1;
+        short_to_float = 1.0f / (1 << 14);
+        level_max = 0.04f;
+        level_min = level_max - 0.02f;
+        break;
+    case id_airspy:
+        convert_input = 2;
+        short_to_float = 1.0f / (1 << 12);
+        level_max = 0.03f;
+        level_min = level_max - 0.015f;
+        break;
+    }
 
     //preamble p1 symbol
     p1_demod = new p1_symbol();
@@ -105,7 +121,8 @@ void dvbt2_frame::correct_resample(float &_corect)
     resample += _corect * resample;
 }
 //-----------------------------------------------------------------------------------------------
-void dvbt2_frame::execute(int _len_in, short* _i_in, short* _q_in, bool _frequence_changed, bool _gain_changed)
+void dvbt2_frame::execute(int _len_in, int16_t* _i_in, int16_t* _q_in,
+                          bool _frequence_changed, bool _gain_changed)
 {
     mutex_in->lock();
 
@@ -129,9 +146,11 @@ void dvbt2_frame::execute(int _len_in, short* _i_in, short* _q_in, bool _frequen
 
         phase_derotate_real = cos_lut(-phase_offset);
         phase_derotate_imag = sin_lut(-phase_offset);
+        int j = 0;
         for(int i = 0; i < chunk; ++i) {
-            real = _i_in[i + idx_in] * short_to_float;
-            imag = _q_in[i + idx_in] * short_to_float;
+            j = (i + idx_in) * convert_input;
+            real = _i_in[j] * short_to_float;
+            imag = _q_in[j] * short_to_float;
             //___DC offset remove____________
             real -= exp_avg_dc_real(real);
             imag -= exp_avg_dc_imag(imag);
@@ -162,7 +181,7 @@ void dvbt2_frame::execute(int _len_in, short* _i_in, short* _q_in, bool _frequen
         interpolator(chunk, out_derotate_sample, arbitrary_resample, len_out_interpolator, out_interpolator);
         int len_out_decimator;
         decimator->execute(len_out_interpolator, out_interpolator, len_out_decimator, out_decimator);
-        //___demodulations and get offset sinchronization___
+        //___demodulations and get offset synchronization___
         symbol_acquisition(len_out_decimator, out_decimator, _frequence_changed,
                            frequancy_offset, phase_offset, sample_rate_offset, est_chunk);
     }
@@ -175,15 +194,15 @@ void dvbt2_frame::execute(int _len_in, short* _i_in, short* _q_in, bool _frequen
     c2 = sqrtf(c_temp * c_temp - c1 * c1);
     //___level gain estimation___
     float level_detect = avg_theta2 * avg_theta3;
-//    qDebug() << "level_detect "<< level_detect;
-    float contr = 0.006f;
+    if(_gain_changed) check_gain = true;
+    else check_gain = false;
     if(check_gain) {
         check_gain = false;
-        if(level_detect < contr) {
+        if(level_detect < level_min) {
             gain_offset = 1;
             change_gain = true;
         }
-        else if(level_detect > contr + contr / 3.0f) {
+        else if(level_detect > level_max) {
             gain_offset = -1;
             change_gain = true;
         }
@@ -191,7 +210,6 @@ void dvbt2_frame::execute(int _len_in, short* _i_in, short* _q_in, bool _frequen
             change_gain = false;
         }
     }
-    if(_gain_changed) check_gain = true;
 
     mutex_in->unlock();
 
@@ -227,12 +245,10 @@ void dvbt2_frame::symbol_acquisition(int _len_in, complex* _in, bool& _frequency
             float coarse_freq_offset = 0.0;
             bool coarse_freq_tuned = false;
             bool p1_decoded = false;
-//            qDebug() << "P1_";
             if(p1_demod->execute(len_in, in, consume, buffer_sym, idx_buffer_sym,
                                  dvbt2, coarse_freq_offset, p1_decoded)) {
 
                 coarse_freq_tuned = abs(coarse_freq_offset) < 120 ? true : false;
-//                qDebug() << "P1";
 
                 if(p2_alredy_init && coarse_freq_tuned) {
                     next_symbol_type = SYMBOL_TYPE_P2;
@@ -280,7 +296,7 @@ void dvbt2_frame::symbol_acquisition(int _len_in, complex* _in, bool& _frequency
             continue;
 
         }
-        //__end Fast Fourier Transform_________________________________
+        //________________________________________________________
 
         if(next_symbol_type == SYMBOL_TYPE_DATA) {
             complex* deinterleaved_cell = data_demod->execute(idx_symbol, ofdm_cell,
@@ -360,7 +376,7 @@ void dvbt2_frame::symbol_acquisition(int _len_in, complex* _in, bool& _frequency
 //        _sample_rate_offset = loop_filter_sample_rate_offset(sample_rate_offset, false);
         _frequancy_offset += frequancy_offset;
 //        _frequancy_offset += loop_filter_frequancy_offset(frequancy_offset, false);
-        _phase_offset += phase_offset * 0.1f;
+        _phase_offset += phase_offset * 0.5f;
         while(_phase_offset > M_PI_X_2) _phase_offset -= M_PI_X_2;
         while(_phase_offset < -M_PI_X_2) _phase_offset += M_PI_X_2;
     }

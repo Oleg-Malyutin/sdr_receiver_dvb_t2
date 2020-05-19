@@ -56,19 +56,19 @@ void p1_symbol::init_p1_randomize()
  * -->__________________________
  *     |     __________         |     __________________    ___________
  *     |    |          |       _|_   |                  |  |           |
- *     |    | delay Tc |____*_/   \__| run average Tc   |__| delay 2Tb |_______
- *     |    |__________|      \_X_/  |__________________|  |___________|       |
+ *     |    | delay Tc |____*_/ x \__| run average Tc   |__| delay 2Tb |_______
+ *     |    |__________|      \___/  |__________________|  |___________|       |
  *     |         _|_                                                           |
- *     |________/   \___________                                               |
- *     |        \_X_/           |                                              |
+ *     |________/ x \___________                                               |
+ *     |        \___/           |                                              |
  *     |     _____|__________   |                                              |
  *     |    |                |  |                                              |
  *     |    |exp(-j2pi*fsh*t)|  |                                              |
  *     |    |________________|  |                                              |
  *     |     __________         |     __________________     __________        |
  *     |    |          |       _|_   |                  |   |          |      _|_      arg max    - time estimate
- *     |____| delay Tb |____*_/   \__| run average Tb   |___| delay 2  |_____/   \_--> angle(max) - phase estimate
- *          |__________|      \_X_/  |__________________|   |__________|     \_X_/
+ *     |____| delay Tb |____*_/ x \__| run average Tb   |___| delay 2  |_____/ x \_--> angle(max) - phase estimate
+ *          |__________|      \___/  |__________________|   |__________|     \___/
  */
 bool p1_symbol::execute(const int _len_in, complex *_in, int &_consume, complex* _buffer_sym, int &_idx_buffer_sym,
                         dvbt2_parameters &_dvbt2, float &_coarse_freq_offset, bool &_p1_decoded)
@@ -92,38 +92,39 @@ bool p1_symbol::execute(const int _len_in, complex *_in, int &_consume, complex*
                 _idx_buffer_sym = idx_buffer;
 
                 if(check_len_p1 < P1_LEN - 10) {
-                    emit bad_signal();
+                    if(!signal_shut) {
+                        signal_shut = true;
+                        emit bad_signal();
+                    }
                 }
                 else {
                     p1_detect =  true;
-
                     memcpy(in_fft, &p1_buffer.read()[P1_C_PART - idx_buffer],
                            sizeof(complex) * static_cast<unsigned int>(P1_A_PART));
                     p1_fft = fft->execute();
-
                     float coarse_freq_offset = atan2_approx(arg_max.imag(), arg_max.real()) * P1_HERTZ_PER_RADIAN;
-                    int check_first_active_carrier_fft = 0;
-                    float amp;
-                    for(int i = 126; i < 134; ++i) {             // +- 26kHz
-                        amp = norm(p1_fft[i]);
-                        if(amp > active_carrier_threshold) {
-                            check_first_active_carrier_fft = i;
-                            break;
+                    if(!p1_decoded) {
+                        for(int shift = 76; shift < 96; ++shift) { // +- 90kHz (one shift +-8928,5Hz)
+                            complex* p1= p1_fft + shift;
+                            if(demodulate(p1, _dvbt2)) {
+                                p1_decoded = true;
+                                if(shift != first_active_carrier) {
+                                    coarse_freq_offset += (shift - first_active_carrier) * P1_CARRIER_SPASING;
+                                }
+                            }
                         }
                     }
-                    if(check_first_active_carrier_fft != first_active_carrier_fft) {
-                        int shift = check_first_active_carrier_fft - first_active_carrier_fft;
-                        coarse_freq_offset += shift * P1_CARRIER_SPASING;
-                    }
-                    else if(demodulate(_dvbt2)) {
-                        _p1_decoded = true;
-                    }
+                    _p1_decoded = p1_decoded;
                     _coarse_freq_offset = coarse_freq_offset;
 
                     cor_os = cor_buffer.read();
                     cor_os[0].imag(_coarse_freq_offset);
-                    emit replace_oscilloscope(P1_LEN, cor_os);
+                    for(int i = 0; i < P1_ACTIVE_CARRIERS; ++i) {
+                        p1_dbpsk[i] = (p1_fft + first_active_carrier)[p1_active_carriers[i]] * 0.1f;
+                    }
                     emit replace_spectrograph(P1_A_PART, p1_fft);
+                    emit replace_constelation(P1_ACTIVE_CARRIERS, p1_dbpsk);
+                    emit replace_oscilloscope(P1_A_PART, cor_os);
                 }
                 idx_buffer = 0;
                 delay_c.reset();
@@ -171,16 +172,12 @@ bool p1_symbol::execute(const int _len_in, complex *_in, int &_consume, complex*
     return p1_detect;
 }
 //-----------------------------------------------------------------------------------------------
-bool p1_symbol::demodulate(dvbt2_parameters &_dvbt2)
+bool p1_symbol::demodulate(complex* _p1, dvbt2_parameters &_dvbt2)
 {
-    complex* p1 = p1_fft + first_active_carrier;
+    complex dbpsk[P1_ACTIVE_CARRIERS];
     for(int i = 0; i < P1_ACTIVE_CARRIERS; ++i) {
-        p1_dbpsk[i] = p1[p1_active_carriers[i]] * 0.1f;
+        dbpsk[i] = _p1[p1_active_carriers[i]] * 0.1f;
     }
-    emit replace_constelation(P1_ACTIVE_CARRIERS, p1_dbpsk);
-
-    if(already_decoded) return true;
-
     // demodulate
     float angle = 0;
     complex dif;
@@ -188,7 +185,7 @@ bool p1_symbol::demodulate(dvbt2_parameters &_dvbt2)
     int dbpsk_old_bit = -1;
     dbpsk_bit[0] = dbpsk_old_bit;
     for(int i = 1; i < P1_ACTIVE_CARRIERS; ++i) {
-        dif = p1_dbpsk[i] * conj(p1_dbpsk[i - 1]);
+        dif = dbpsk[i] * conj(dbpsk[i - 1]);
         angle = atan2_approx(dif.imag(), dif.real());
         dbpsk_bit[i] = abs(angle) > M_PI_2f32 ? -dbpsk_old_bit : dbpsk_old_bit;
         dbpsk_old_bit = dbpsk_bit[i];
@@ -290,8 +287,9 @@ bool p1_symbol::demodulate(dvbt2_parameters &_dvbt2)
         // mixed : Preambles of different types are transmitted
         break;
     }
-    already_decoded = true;
+
     return true;
+
 }
 //-----------------------------------------------------------------------------------------------
 

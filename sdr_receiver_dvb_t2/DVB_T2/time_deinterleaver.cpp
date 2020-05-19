@@ -289,6 +289,12 @@ void time_deinterleaver::execute(int _len_in, complex* _ofdm_cell)
 {
     mutex_in->lock();
     signal_in->wakeOne();
+
+
+//    mutex_in->unlock();
+//    return;
+
+
     int num_cells = _len_in;
     complex* ofdm_cell = &_ofdm_cell[0];
     if(start_t2_frame == true) {

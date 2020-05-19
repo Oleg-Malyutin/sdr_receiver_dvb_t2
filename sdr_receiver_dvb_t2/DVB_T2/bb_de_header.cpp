@@ -85,6 +85,10 @@ void bb_de_header::execute(int _plp_id, l1_postsignalling _l1_post, int _len_in,
 {
     mutex_in->lock();
     signal_in->wakeOne();
+
+//                mutex_in->unlock();
+//                return;
+
     l1_postsignalling l1_post = _l1_post;
     int len_in = _len_in;
     uint8_t* in = _in;
@@ -479,6 +483,7 @@ void bb_de_header::set_info(int _plp_id, l1_postsignalling _l1_post,
         next_plp_info = 0;
         info_already_set = true;
         emit ts_stage(info);
+        info = "";
     }
     else{
         info += "\n";

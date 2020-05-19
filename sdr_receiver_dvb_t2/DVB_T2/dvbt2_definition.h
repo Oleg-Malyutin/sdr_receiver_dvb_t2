@@ -30,8 +30,7 @@ typedef std::complex<float> complex;
 #define HERTZ_PER_RADIAN     (SAMPLE_RATE / M_PI_X_2)   // sample rate (radian)
 // 32K mode
 #define FFT_32K             32768
-#define CARRIER_SPASING_32K (SAMPLE_RATE / 32768.0f)    //Hz
-#define LF_MAX_32k          68                          //Maximum frame length in OFDM symbols,
+#define FRAME_LEN_MAX       68                          //Maximum frame length in OFDM symbols,
                                                         //including P2 and data symbols,
                                                         //for 32K FFT sizes and guard-interval 1/128
 #define SYMBOL_TYPE_P1      0
@@ -872,7 +871,6 @@ const int mux64[12] =
     11, 8, 5, 2, 10, 7, 4, 1, 9, 6, 3, 0
 };
 //-----------------------------------------------------------------------------------------------
-
 
 void dvbt2_p2_parameters_init(dvbt2_parameters &_dvbt2);
 void dvbt2_bwt_ext_parameters_init(dvbt2_parameters &_dvbt2);
