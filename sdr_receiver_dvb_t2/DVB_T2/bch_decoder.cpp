@@ -65,6 +65,9 @@ void bch_decoder::execute(int *_idx_plp_simd, l1_postsignalling _l1_post, int _l
     mutex_in->lock();
     signal_in->wakeOne();
 
+//        mutex_in->unlock();
+//        return;
+
     int* plp_id = _idx_plp_simd;
     l1_postsignalling l1_post = _l1_post;
     int len_in = _len_in;
@@ -133,11 +136,11 @@ void bch_decoder::execute(int *_idx_plp_simd, l1_postsignalling _l1_post, int _l
     // TODO BCH decode
 
     int n = 0;
-    for(int j = 0; j < len_in; j += n_bch){
+    for(int j = 0; j < len_in; j += n_bch) {
         for (int i = 0; i < k_bch; ++i) {
             out[i] = in[j + i] ^ descrambler[i];
         }
-        if(swap_buffer){
+        if(swap_buffer) {
             swap_buffer = false;
             mutex_out->lock();
             emit bit_descramble(plp_id[n], l1_post, k_bch, buffer_a);
@@ -146,7 +149,7 @@ void bch_decoder::execute(int *_idx_plp_simd, l1_postsignalling _l1_post, int _l
             ++n;
             out = buffer_b;
         }
-        else{
+        else {
             swap_buffer = true;
             mutex_out->lock();
             emit bit_descramble(plp_id[n], l1_post, k_bch, buffer_b);

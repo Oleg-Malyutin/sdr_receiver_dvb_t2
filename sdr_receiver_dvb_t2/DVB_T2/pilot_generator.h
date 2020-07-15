@@ -1,4 +1,5 @@
 /*
+ *  Copyright 2014 Ron Economos.
  *  Copyright 2020 Oleg Malyutin.
  *
  * This program is free software: you can redistribute it and/or modify
@@ -36,7 +37,7 @@ public:
 
 private:
     dvbt2_parameters dvbt2;
-    int* data_carrier_map_0 = nullptr;
+    int* data_carrier_map_temp = nullptr;
     int n_data;
     float p2_bpsk[2];
     float sp_bpsk[2];

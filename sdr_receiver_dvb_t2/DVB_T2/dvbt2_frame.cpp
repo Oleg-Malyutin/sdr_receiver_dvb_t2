@@ -19,7 +19,7 @@
 
 #include "DSP/fast_math.h"
 
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 dvbt2_frame::dvbt2_frame(QWaitCondition *_signal_in, QMutex *_mutex_in, id_device_t _id_device,
                          int _len_in_max, int _len_block, float _sample_rate, QObject *parent) :
     QObject(parent),
@@ -55,6 +55,12 @@ dvbt2_frame::dvbt2_frame(QWaitCondition *_signal_in, QMutex *_mutex_in, id_devic
         level_max = 0.03f;
         level_min = level_max - 0.015f;
         break;
+    case id_plutosdr:
+        convert_input = 1;
+        short_to_float = 1.0f / (1 << 11);
+        level_max = 0.06f;
+        level_min = level_max - 0.02f;
+        break;
     }
 
     //preamble p1 symbol
@@ -85,7 +91,7 @@ dvbt2_frame::dvbt2_frame(QWaitCondition *_signal_in, QMutex *_mutex_in, id_devic
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     thread->start();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 dvbt2_frame::~dvbt2_frame()
 {   
     emit stop_deinterleaver();
@@ -99,11 +105,11 @@ dvbt2_frame::~dvbt2_frame()
     delete [] out_decimator;
     delete [] buffer_sym;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_frame::init_dvbt2()
 {
     dvbt2.bandwidth = BANDWIDTH_8_0_MHZ;
-    dvbt2.miso_group = MISO_TX1;//??????
+    dvbt2.miso_group = MISO_TX1;//?
     dvbt2_p2_parameters_init(dvbt2);
     in_fft = fft->init(dvbt2.fft_size);
     fq_deint->init(dvbt2);
@@ -115,12 +121,12 @@ void dvbt2_frame::init_dvbt2()
     //..
     p2_alredy_init = true;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_frame::correct_resample(float &_corect)
 {
     resample += _corect * resample;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_frame::execute(int _len_in, int16_t* _i_in, int16_t* _q_in,
                           bool _frequence_changed, bool _gain_changed)
 {
@@ -194,6 +200,7 @@ void dvbt2_frame::execute(int _len_in, int16_t* _i_in, int16_t* _q_in,
     c2 = sqrtf(c_temp * c_temp - c1 * c1);
     //___level gain estimation___
     float level_detect = avg_theta2 * avg_theta3;
+//    qDebug() << "level_detect "<< level_detect;
     if(_gain_changed) check_gain = true;
     else check_gain = false;
     if(check_gain) {
@@ -214,7 +221,7 @@ void dvbt2_frame::execute(int _len_in, int16_t* _i_in, int16_t* _q_in,
     mutex_in->unlock();
 
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void  dvbt2_frame::est_1_bit_quantization(float _real, float _imag,
                                           float &_theta1, float &_theta2, float &_theta3)
 {
@@ -225,11 +232,11 @@ void  dvbt2_frame::est_1_bit_quantization(float _real, float _imag,
     sgn = _imag < 0 ? -1.0f : 1.0f;
     _theta3 += _imag * sgn;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_frame::symbol_acquisition(int _len_in, complex* _in, bool& _frequency_changed,
                                      float &_frequancy_offset, float &_phase_offset,
                                      float &_sample_rate_offset, int& _est_len_in)
-{   
+{
     int len_in = _len_in;
     complex* in = _in;
     int est_len_in = 0;
@@ -255,7 +262,7 @@ void dvbt2_frame::symbol_acquisition(int _len_in, complex* _in, bool& _frequency
                 }
                 else {
                     if(!coarse_freq_tuned) {
-                        if(_frequency_changed){
+                        if(_frequency_changed) {
                             change_frequency = true;
                             frequency_offset = coarse_freq_offset;
                         }
@@ -274,8 +281,8 @@ void dvbt2_frame::symbol_acquisition(int _len_in, complex* _in, bool& _frequency
         int len_in_sym = len_in - consume;
         int len_out_sym = symbol_size - idx_buffer_sym;
         int len_cpy_sym = len_out_sym > len_in_sym ? len_in_sym : len_out_sym;
-        memcpy(buffer_sym + idx_buffer_sym, in + consume, sizeof(complex) *
-               static_cast<uint>(len_cpy_sym));
+        memcpy(buffer_sym + idx_buffer_sym, in + consume,
+               sizeof(complex) * static_cast<uint>(len_cpy_sym));
         consume += len_cpy_sym;
         idx_buffer_sym += len_cpy_sym;
         if(idx_buffer_sym == symbol_size) {
@@ -286,8 +293,8 @@ void dvbt2_frame::symbol_acquisition(int _len_in, complex* _in, bool& _frequency
                 for (int i = 0; i < dvbt2.guard_interval_size; ++i) sum += cp[i] * conj(buffer_sym[i]);
                 frequancy_offset = atan2_approx(sum.imag(), sum.real()) / (dvbt2.fft_size << 1);
             }
-            memcpy(in_fft, &buffer_sym[dvbt2.guard_interval_size], sizeof(complex) *
-                    static_cast<uint>(dvbt2.fft_size));
+            memcpy(in_fft, &buffer_sym[dvbt2.guard_interval_size],
+                    sizeof(complex) * static_cast<uint>(dvbt2.fft_size));
             ofdm_cell = fft->execute();
         }
         else {
@@ -372,11 +379,11 @@ void dvbt2_frame::symbol_acquisition(int _len_in, complex* _in, bool& _frequency
             }
         }
 
-        _sample_rate_offset = sample_rate_offset;
-//        _sample_rate_offset = loop_filter_sample_rate_offset(sample_rate_offset, false);
-        _frequancy_offset += frequancy_offset;
-//        _frequancy_offset += loop_filter_frequancy_offset(frequancy_offset, false);
-        _phase_offset += phase_offset * 0.5f;
+//        _sample_rate_offset = sample_rate_offset;
+        _sample_rate_offset = loop_filter_sample_rate_offset(sample_rate_offset, false);
+//        _frequancy_offset += frequancy_offset;
+        _frequancy_offset += loop_filter_frequancy_offset(frequancy_offset, false);
+        _phase_offset += phase_offset * 0.25f;
         while(_phase_offset > M_PI_X_2) _phase_offset -= M_PI_X_2;
         while(_phase_offset < -M_PI_X_2) _phase_offset += M_PI_X_2;
     }
@@ -413,7 +420,7 @@ void dvbt2_frame::set_guard_interval()
     symbol_size = dvbt2.fft_size + dvbt2.guard_interval_size;
     est_chunk = symbol_size;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_frame::set_guard_interval_by_brute_force ()
 {
     static int idx = 0;
@@ -452,7 +459,7 @@ void dvbt2_frame::set_guard_interval_by_brute_force ()
     symbol_size = dvbt2.fft_size + dvbt2.guard_interval_size;
     est_chunk = symbol_size;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_frame::get_signal_estimate(bool &_cange_frequency, float &_frequency_offset,
                                       bool &_change_gain, int &_gain_offset)
 {
@@ -463,8 +470,9 @@ void dvbt2_frame::get_signal_estimate(bool &_cange_frequency, float &_frequency_
     change_gain = false;
     _gain_offset = gain_offset;
 }
-//-----------------------------------------------------------------------------------------------
-void dvbt2_frame::stop(){
+//----------------------------------------------------------------------------------------------------------------------------
+void dvbt2_frame::stop()
+{
     emit finished();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------

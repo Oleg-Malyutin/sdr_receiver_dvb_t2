@@ -25,7 +25,7 @@ class data_symbol : public QObject
 {
     Q_OBJECT
 public:
-    data_symbol(QObject* parent = nullptr);
+    explicit data_symbol(QObject* parent = nullptr);
     ~data_symbol();
 
     complex *execute(int _idx_symbol, complex* _ofdm_cell,

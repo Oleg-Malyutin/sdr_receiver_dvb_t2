@@ -27,7 +27,7 @@ class time_deinterleaver : public QObject
 {
     Q_OBJECT
 public:
-    time_deinterleaver(QWaitCondition* _signal_in, QMutex* _mutex, QObject *parent = nullptr);
+    explicit time_deinterleaver(QWaitCondition* _signal_in, QMutex* _mutex, QObject *parent = nullptr);
     ~time_deinterleaver();
 
     void start(dvbt2_parameters _dvbt2, l1_presignalling _l1_pre, l1_postsignalling _l1_post);
@@ -71,8 +71,6 @@ private:
     int** num_cols;                         // number of colums per TI block
     int** permutations;                     // address cell deinterleaving
     int* last_frame_idx;                    // last T2 frame of first interleaving frame
-
-
 
     int num_fec_fblock;                     // Total number of FEC blocks to decode
     int fec_blocks_per_interleaving_frame;  // FEC blocks in each Interleaving Frame

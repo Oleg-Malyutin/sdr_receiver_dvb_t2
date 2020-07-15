@@ -57,7 +57,7 @@ signals:
 
 public slots:
     void execute(int _plp_id, l1_postsignalling _l1_post, int _len_in, uint8_t* _in);
-    void set_out(id_out _id_current_out, int _num_port_udp, QString _file_name, int _need_plp);
+    void set_out(bb_de_header::id_out _id_current_out, int _num_port_udp, QString _file_name, int _need_plp);
     void stop();
 
 private:
@@ -90,6 +90,7 @@ private:
     int need_plp = 0;
     uint8_t* begin_out;
     uint8_t* out;
+    int len;
     char* buffer_out;
     QFile* file = nullptr;
     QDataStream* stream;

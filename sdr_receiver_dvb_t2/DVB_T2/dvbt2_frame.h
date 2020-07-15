@@ -36,6 +36,7 @@
 enum id_device_t{
     id_sdrplay = 0,
     id_airspy,
+    id_plutosdr,
 };
 
 class dvbt2_frame : public QObject
@@ -106,13 +107,13 @@ private:
     float phase_nco = 0.0f;
 
     float frequancy_offset = 0.0f;
-    static constexpr float k_proportional_fq = 0.05f;
-    static constexpr float max_integral_fq = 1.0e-5f;
+    static constexpr float k_proportional_fq = 0.3f;
+    static constexpr float max_integral_fq = 5.0e-6f;
     pid_controller<float, k_proportional_fq, max_integral_fq> loop_filter_frequancy_offset;
 
     float sample_rate_offset = 0.0f;
-    static constexpr float k_proportional_fs = 0.01f;
-    static constexpr float max_integral_fs = 1.0e-5f;
+    static constexpr float k_proportional_fs = 0.1f;
+    static constexpr float max_integral_fs = 5.0e-6f;
     pid_controller<float, k_proportional_fs, max_integral_fs> loop_filter_sample_rate_offset;
 
     float phase_offset = 0.0f;

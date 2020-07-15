@@ -18,7 +18,7 @@
 
 #define P1_HERTZ_PER_RADIAN HERTZ_PER_RADIAN / (P1_LEN << 1)
 
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 p1_symbol::p1_symbol(QObject *parent) : QObject(parent)
 {
     const float angle_shift = M_PI_X_2 / static_cast<float>(P1_FREQUENCY_SHIFT);
@@ -34,12 +34,12 @@ p1_symbol::p1_symbol(QObject *parent) : QObject(parent)
 
     init_p1_randomize();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 p1_symbol::~p1_symbol()
 {
     delete fft;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p1_symbol::init_p1_randomize()
 {
     int sr = 0x4e46;
@@ -51,7 +51,7 @@ void p1_symbol::init_p1_randomize()
         if(b > 0) sr |= 0x4000;
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 /*         chain block diagram
  * -->__________________________
  *     |     __________         |     __________________    ___________
@@ -92,13 +92,20 @@ bool p1_symbol::execute(const int _len_in, complex *_in, int &_consume, complex*
                 _idx_buffer_sym = idx_buffer;
 
                 if(check_len_p1 < P1_LEN - 10) {
-                    if(!signal_shut) {
-                        signal_shut = true;
-                        emit bad_signal();
-                    }
+
+                    if(check_len_p1_count == 100) emit bad_signal();
+
+                    delay_c.reset();
+                    delay_b.reset();
+                    delay_b_x2.reset();
+                    delay_2.reset();
+                    average_b.reset();
+                    average_c.reset();
+                    ++check_len_p1_count;
                 }
                 else {
                     p1_detect =  true;
+                    check_len_p1_count = 0;
                     memcpy(in_fft, &p1_buffer.read()[P1_C_PART - idx_buffer],
                            sizeof(complex) * static_cast<unsigned int>(P1_A_PART));
                     p1_fft = fft->execute();
@@ -111,8 +118,10 @@ bool p1_symbol::execute(const int _len_in, complex *_in, int &_consume, complex*
                                 if(shift != first_active_carrier) {
                                     coarse_freq_offset += (shift - first_active_carrier) * P1_CARRIER_SPASING;
                                 }
+                                break;
                             }
                         }
+                        if(!p1_decoded) coarse_freq_offset = 0;
                     }
                     _p1_decoded = p1_decoded;
                     _coarse_freq_offset = coarse_freq_offset;
@@ -127,12 +136,7 @@ bool p1_symbol::execute(const int _len_in, complex *_in, int &_consume, complex*
                     emit replace_oscilloscope(P1_A_PART, cor_os);
                 }
                 idx_buffer = 0;
-                delay_c.reset();
-                delay_b.reset();
-                delay_b_x2.reset();
-                delay_2.reset();
-                //                average_b.reset();
-                //                average_c.reset();
+
                 ++idx_in;
 
                 break;
@@ -171,7 +175,7 @@ bool p1_symbol::execute(const int _len_in, complex *_in, int &_consume, complex*
     _consume = idx_in;
     return p1_detect;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 bool p1_symbol::demodulate(complex* _p1, dvbt2_parameters &_dvbt2)
 {
     complex dbpsk[P1_ACTIVE_CARRIERS];
@@ -291,6 +295,6 @@ bool p1_symbol::demodulate(complex* _p1, dvbt2_parameters &_dvbt2)
     return true;
 
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 
 

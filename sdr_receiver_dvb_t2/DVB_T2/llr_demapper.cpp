@@ -14,8 +14,7 @@
 */
 #include "llr_demapper.h"
 
-#include <QDebug>
-
+//#include <QDebug>
 #include <immintrin.h>
 
 //------------------------------------------------------------------------------------------
@@ -169,13 +168,12 @@ void llr_demapper::qpsk(int _plp_id, l1_postsignalling _l1_post, int _len_in, co
     float sum_s = 0;
     float sum_e = 0;
     float snr, precision;
-    if(derotate){
+    if(derotate) {
         for(int i = 0; i < len_in; ++i) _in[i] *=  derotate_qpsk;
     }
     complex in;
     //hard demap
-    for(int i = 0; i < 2048; ++i)
-    {
+    for(int i = 0; i < 2048; ++i) {
         complex s, e;
         in = _in[i];
         if(in.real() > 0)s.real(NORM_FACTOR_QPSK);
@@ -187,10 +185,10 @@ void llr_demapper::qpsk(int _plp_id, l1_postsignalling _l1_post, int _len_in, co
         sum_e += std::norm(e);
     }
     snr = 10.0f * std::log10(sum_s / sum_e);
+    emit signal_noise_ratio(snr);
     precision = 8.0f * NORM_FACTOR_QPSK * sum_s / sum_e;
     //soft demap
-    for(int i = 0; i < len_in; ++i)
-    {
+    for(int i = 0; i < len_in; ++i) {
         complex in;
         in = _in[i];
         out[idx_out++] = quantize(precision, in.real());
@@ -248,8 +246,7 @@ void llr_demapper::qam16(int _plp_id, l1_postsignalling _l1_post, int _len_in, c
     float snr;
     complex in;
     //hard demap
-    for(int i = 0; i < len_in; ++i)
-    {
+    for(int i = 0; i < len_in; ++i) {
         complex s, e;
         in = _in[i];
         if(in.real() > 0){
@@ -297,7 +294,7 @@ void llr_demapper::qam16(int _plp_id, l1_postsignalling _l1_post, int _len_in, c
     }
     address_begin = address;
 
-    for(int i = 0; i < len_in; i += 4){
+    for(int i = 0; i < len_in; i += 4) {
 
         float* in = reinterpret_cast<float*>(_in + i);
         v_in = _mm256_load_ps(in);
@@ -331,7 +328,7 @@ void llr_demapper::qam16(int _plp_id, l1_postsignalling _l1_post, int _len_in, c
             address += 8;
         }
         idx_out += 16;
-        if(idx_out == fec_size){
+        if(idx_out == fec_size) {
             idx_out = 0;
             address = address_begin;
             out += fec_size;
@@ -372,11 +369,11 @@ void llr_demapper::qam64(int _plp_id, l1_postsignalling _l1_post, int _len_in, c
     int idx_out = 0;
     static int blocks = 0;
     static int8_t* out;
-    if(blocks == 0){
+    if(blocks == 0) {
         if(swap_buffer) out = buffer_a;
         else out = buffer_b;
     }
-    if(derotate){
+    if(derotate) {
         for(int i = 0; i < len_in; ++i) _in[i] *=  derotate_qam64;
     }
     //hard demap
@@ -384,8 +381,7 @@ void llr_demapper::qam64(int _plp_id, l1_postsignalling _l1_post, int _len_in, c
     float sum_e = 0;
     float snr;
     complex in;
-    for(int i = 0; i < 2048; ++i)
-    {
+    for(int i = 0; i < 2048; ++i) {
         complex s, e;
         in = _in[i];
         if(in.real() > 0){
@@ -459,7 +455,7 @@ void llr_demapper::qam64(int _plp_id, l1_postsignalling _l1_post, int _len_in, c
     }
     address_begin = address;
 
-    for(int i = 0; i < len_in; i += 4){
+    for(int i = 0; i < len_in; i += 4) {
 
         float* in = reinterpret_cast<float*>(_in + i);
         v_in = _mm256_load_ps(in);
@@ -480,7 +476,7 @@ void llr_demapper::qam64(int _plp_id, l1_postsignalling _l1_post, int _len_in, c
         _mm256_store_ps(llr_bits_4_5, v_round);
 
         int n = 0;
-        for(int i = 0; i < 2; ++i){
+        for(int i = 0; i < 2; ++i) {
             int even_1 = n;
             int odd_1  = n + 1;
             int even_2 = n + 2;
@@ -503,7 +499,7 @@ void llr_demapper::qam64(int _plp_id, l1_postsignalling _l1_post, int _len_in, c
             address += 12;
         }
         idx_out += 24;
-        if(idx_out == fec_size){
+        if(idx_out == fec_size) {
             idx_out = 0;
             address = address_begin;
             out += fec_size;
@@ -544,11 +540,11 @@ void llr_demapper::qam256(int _plp_id, l1_postsignalling _l1_post, int _len_in, 
     int idx_out = 0;
     static int blocks = 0;
     static int8_t* out;
-    if(blocks == 0){
+    if(blocks == 0) {
         if(swap_buffer) out = buffer_a;
         else out = buffer_b;
     }
-    if(derotate){
+    if(derotate) {
         for(int i = 0; i < len_in; ++i) _in[i] *=  derotate_qam256;
     }
     //hard demap
@@ -557,8 +553,7 @@ void llr_demapper::qam256(int _plp_id, l1_postsignalling _l1_post, int _len_in, 
     float snr;
     //hard demap
     complex in;
-    for(int i = 0; i < len_in; ++i)
-    {
+    for(int i = 0; i < len_in; ++i) {
         complex s, e;
         in = _in[i];
         if(in.real() > 0){
@@ -583,7 +578,7 @@ void llr_demapper::qam256(int _plp_id, l1_postsignalling _l1_post, int _len_in, 
                 }
             }
         }
-        else{
+        else {
             if(in.real() < -norm_256_x8){
                 if(in.real() < -norm_256_x12){
                     if(in.real() < -norm_256_x14) s.real(-norm_256_x15);
@@ -605,7 +600,7 @@ void llr_demapper::qam256(int _plp_id, l1_postsignalling _l1_post, int _len_in, 
                 }
             }
         }
-        if(in.imag() > 0){
+        if(in.imag() > 0) {
             if(in.imag() > norm_256_x8){
                 if(in.imag() > norm_256_x12){
                     if(in.imag() > norm_256_x14) s.imag(norm_256_x15);
@@ -627,7 +622,7 @@ void llr_demapper::qam256(int _plp_id, l1_postsignalling _l1_post, int _len_in, 
                 }
             }
         }
-        else{
+        else {
             if(in.imag() < -norm_256_x8){
                 if(in.imag() < -norm_256_x12){
                     if(in.imag() < -norm_256_x14) s.imag(-norm_256_x15);
@@ -683,7 +678,7 @@ void llr_demapper::qam256(int _plp_id, l1_postsignalling _l1_post, int _len_in, 
     }
     address_begin = address;
 
-    for(int i = 0; i < len_in; i += 4){
+    for(int i = 0; i < len_in; i += 4) {
 
         float* in = reinterpret_cast<float*>(_in + i);
         v_in = _mm256_load_ps(in);

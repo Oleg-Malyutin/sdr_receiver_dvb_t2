@@ -56,7 +56,7 @@ private:
     save_buffer<complex, P1_LEN>            p1_buffer;
     save_buffer<complex, P1_A_PART>         cor_buffer;
     float correlation;
-    const float begin_threshold = 1.5e+5f;// FIX ME;
+    const float begin_threshold = 5.0e+5f;// 1.5e+5f FIX ME;
     const float end_threshold = begin_threshold * 0.5f;
     float max_correlation = 0.0;
     bool correlation_detect = false;
@@ -64,7 +64,7 @@ private:
     complex* cor_os;
     int len_p1 = 0;
     int check_len_p1;
-    bool signal_shut = false;
+    int check_len_p1_count = 0;
     bool p1_decoded = false;
 
     fast_fourier_transform* fft;

@@ -25,7 +25,7 @@ class fc_symbol : public QObject
 {
     Q_OBJECT
 public:
-    fc_symbol(QObject* parent = nullptr);
+    explicit fc_symbol(QObject* parent = nullptr);
     ~fc_symbol();
 
     complex *execute(complex* _ofdm_cell, float &_sample_rate_offset, float &_phase_offset);

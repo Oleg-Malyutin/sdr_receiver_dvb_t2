@@ -16,12 +16,12 @@
 
 #include "DSP/fast_math.h"
 
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 fc_symbol::fc_symbol(QObject* parent) : QObject(parent)
 {
     table_sin_cos_instance.table_();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 fc_symbol::~fc_symbol()
 {   
     if(est_show != nullptr){
@@ -30,7 +30,7 @@ fc_symbol::~fc_symbol()
         delete [] show_data;
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void fc_symbol::init(dvbt2_parameters _dvbt2, pilot_generator* _pilot,
                      address_freq_deinterleaver* _address)
 {
@@ -70,103 +70,55 @@ void fc_symbol::init(dvbt2_parameters _dvbt2, pilot_generator* _pilot,
     show_symbol = new complex[fft_size];
     show_data = new complex[n_fc];
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 complex* fc_symbol::execute(complex* _ofdm_cell, float &_sample_rate_offset, float &_phase_offset)
 {
-        complex* ofdm_cell = &_ofdm_cell[left_nulls];
-        complex est_pilot, est_dif;
-        float angle = 0.0f;
-        float delta_angle = 0.0f;
-        float angle_est = 0.0f;
-        float amp = 0.0f;
-        float delta_amp = 0.0f;
-        float amp_est = 0.0f;
-        complex sum_dif_1 = {0.0f, 0.0f};
-        complex sum_dif_2 = {0.0f, 0.0f};
-        complex sum_pilot_1 = {0.0f, 0.0f};
-        complex sum_pilot_2 = {0.0f, 0.0f};
-        int len_show = 0;
-        float pilot_refer;
-        float amp_pilot = amp_sp;
-        complex cell;
-        complex old_cell = {0.0, 0.0};
-        complex derotate;
-        int idx_data = 0;
-        int d = 0;
-        int* h;
-        if(idx_symbol % 2 == 0) h = h_odd_fc;
-        else h = h_even_fc;
+    complex* ofdm_cell = &_ofdm_cell[left_nulls];
+    complex est_pilot, est_dif;
+    float angle = 0.0f;
+    float delta_angle = 0.0f;
+    float angle_est = 0.0f;
+    float amp = 0.0f;
+    float delta_amp = 0.0f;
+    float amp_est = 0.0f;
+    complex sum_dif_1 = {0.0f, 0.0f};
+    complex sum_dif_2 = {0.0f, 0.0f};
+    complex sum_pilot_1 = {0.0f, 0.0f};
+    complex sum_pilot_2 = {0.0f, 0.0f};
+    int len_show = 0;
+    float pilot_refer;
+    float amp_pilot = amp_sp;
+    complex cell;
+    complex old_cell = {0.0, 0.0};
+    complex derotate;
+    int idx_data = 0;
+    int d = 0;
+    int* h;
+    if(idx_symbol % 2 == 0) h = h_odd_fc;
+    else h = h_even_fc;
 
-        //__for first pilot______
-        cell = ofdm_cell[0];
-        pilot_refer = fc_pilot_refer[0];
-        if(pilot_refer < 0) {
-            cell = -cell;
-            pilot_refer = -pilot_refer;
-        }
-        est_dif = cell * conj(old_cell);
-        old_cell = cell;
-        est_pilot = cell * pilot_refer;
-        est_dif = cell * conj(old_cell);
-        old_cell = cell;
-        sum_pilot_1 += est_pilot;
-        sum_dif_1 += est_dif;
-        angle_est = atan2_approx(est_pilot.imag(), est_pilot.real());
-        amp_est = sqrt(norm(cell)) / amp_pilot;
-        //__ ... ______________
+    //__for first pilot______
+    cell = ofdm_cell[0];
+    pilot_refer = fc_pilot_refer[0];
+    if(pilot_refer < 0) {
+        cell = -cell;
+        pilot_refer = -pilot_refer;
+    }
+    est_dif = cell * conj(old_cell);
+    old_cell = cell;
+    est_pilot = cell * pilot_refer;
+    est_dif = cell * conj(old_cell);
+    old_cell = cell;
+    sum_pilot_1 += est_pilot;
+    sum_dif_1 += est_dif;
+    angle_est = atan2_approx(est_pilot.imag(), est_pilot.real());
+    amp_est = sqrt(norm(cell)) / amp_pilot;
+    //__ ... ______________
 
-        for (int i = 1; i < half_total; ++i){
-            cell = ofdm_cell[i];
-            pilot_refer = fc_pilot_refer[i];
-            switch (fc_carrier_map[i]){
-            case DATA_CARRIER:
-                buffer_cell[idx_data] = cell;
-                ++idx_data;
-                break;
-            case SCATTERED_CARRIER_INVERTED:
-            case SCATTERED_CARRIER:
-                if(pilot_refer < 0) {
-                    cell = -cell;
-                    pilot_refer = -pilot_refer;
-                }
-                est_dif = cell * conj(old_cell);
-                old_cell = cell;
-                est_pilot = cell * pilot_refer;
-                    sum_pilot_1 += est_pilot;
-                    sum_dif_1 += est_dif;
-                angle = atan2_approx(est_pilot.imag(), est_pilot.real());
-                delta_angle = (angle - angle_est) / (idx_data + 1);
-                amp = sqrt(norm(cell)) / amp_pilot;
-                delta_amp = (amp - amp_est) / (idx_data + 1);
-                for(int j = 0; j < idx_data; ++j){
-                    angle_est += delta_angle;
-                    amp_est += delta_amp;
-                    derotate.real(cos_lut(angle_est) / amp_est);
-                    derotate.imag(sin_lut(angle_est) / amp_est);
-                    deinterleaved_cell[h[d]] = buffer_cell[j] * conj(derotate);
-                    ++d;
-                }
-                idx_data = 0;
-                angle_est = angle;
-                amp_est = amp;
-                //Only for show
-                est_show[len_show].real(angle);
-                est_show[len_show].imag(amp);
-                ++len_show;
-                // ...
-                break;
-            case TRPAPR_CARRIER:
-                //TODO
-                //printf("TRPAPR_CARRIER\n");
-                break;
-            default:
-                break;
-            }
-        }
-
-        cell = ofdm_cell[half_total];
-        pilot_refer = fc_pilot_refer[half_total];
-        switch (fc_carrier_map[half_total]){
+    for (int i = 1; i < half_total; ++i){
+        cell = ofdm_cell[i];
+        pilot_refer = fc_pilot_refer[i];
+        switch (fc_carrier_map[i]){
         case DATA_CARRIER:
             buffer_cell[idx_data] = cell;
             ++idx_data;
@@ -178,9 +130,25 @@ complex* fc_symbol::execute(complex* _ofdm_cell, float &_sample_rate_offset, flo
                 pilot_refer = -pilot_refer;
             }
             est_dif = cell * conj(old_cell);
+            old_cell = cell;
             est_pilot = cell * pilot_refer;
+            sum_pilot_1 += est_pilot;
+            sum_dif_1 += est_dif;
             angle = atan2_approx(est_pilot.imag(), est_pilot.real());
+            delta_angle = (angle - angle_est) / (idx_data + 1);
             amp = sqrt(norm(cell)) / amp_pilot;
+            delta_amp = (amp - amp_est) / (idx_data + 1);
+            for(int j = 0; j < idx_data; ++j){
+                angle_est += delta_angle;
+                amp_est += delta_amp;
+                derotate.real(cos_lut(angle_est) / amp_est);
+                derotate.imag(sin_lut(angle_est) / amp_est);
+                deinterleaved_cell[h[d]] = buffer_cell[j] * conj(derotate);
+                ++d;
+            }
+            idx_data = 0;
+            angle_est = angle;
+            amp_est = amp;
             //Only for show
             est_show[len_show].real(angle);
             est_show[len_show].imag(amp);
@@ -194,70 +162,102 @@ complex* fc_symbol::execute(complex* _ofdm_cell, float &_sample_rate_offset, flo
         default:
             break;
         }
+    }
 
-        for (int i = half_total + 1; i < k_total; ++i){
-            cell = ofdm_cell[i];
-            pilot_refer = fc_pilot_refer[i];
-            switch (fc_carrier_map[i]){
-            case DATA_CARRIER:
-                buffer_cell[idx_data] = cell;
-                ++idx_data;
-                break;
-            case SCATTERED_CARRIER_INVERTED:
-            case SCATTERED_CARRIER:
-                if(pilot_refer < 0) {
-                    cell = -cell;
-                    pilot_refer = -pilot_refer;
-                }
-                est_dif = cell * conj(old_cell);
-                old_cell = cell;
-                est_pilot = cell * pilot_refer;
-                    sum_pilot_2 += est_pilot;
-                    sum_dif_2 += est_dif;
-                angle = atan2_approx(est_pilot.imag(), est_pilot.real());
-                delta_angle = (angle - angle_est) / (idx_data + 1);
-                amp = sqrt(norm(cell)) / amp_pilot;
-                delta_amp = (amp - amp_est) / (idx_data + 1);
-                for(int j = 0; j < idx_data; ++j){
-                    angle_est += delta_angle;
-                    amp_est += delta_amp;
-                    derotate.real(cos_lut(angle_est) / amp_est);
-                    derotate.imag(sin_lut(angle_est) / amp_est);
-                    deinterleaved_cell[h[d]] = buffer_cell[j] * conj(derotate);
-                    ++d;
-                }
-                idx_data = 0;
-                angle_est = angle;
-                amp_est = amp;
-                //Only for show
-                est_show[len_show].real(angle);
-                est_show[len_show].imag(amp);
-                ++len_show;
-                // ...
-                break;
-            case TRPAPR_CARRIER:
-                //TODO
-                //printf("TRPAPR_CARRIER\n");
-                break;
-            default:
-                break;
-            }
+    cell = ofdm_cell[half_total];
+    pilot_refer = fc_pilot_refer[half_total];
+    switch (fc_carrier_map[half_total]){
+    case DATA_CARRIER:
+        buffer_cell[idx_data] = cell;
+        ++idx_data;
+        break;
+    case SCATTERED_CARRIER_INVERTED:
+    case SCATTERED_CARRIER:
+        if(pilot_refer < 0) {
+            cell = -cell;
+            pilot_refer = -pilot_refer;
         }
-        float ph_1 = atan2_approx(sum_pilot_1.imag(), sum_pilot_1.real());
-        float ph_2 = atan2_approx(sum_pilot_2.imag(), sum_pilot_2.real());
-        float dph_1 = atan2_approx(sum_dif_1.imag(), sum_dif_1.real());
-        float dph_2 = atan2_approx(sum_dif_2.imag(), sum_dif_2.real());
+        est_dif = cell * conj(old_cell);
+        est_pilot = cell * pilot_refer;
+        angle = atan2_approx(est_pilot.imag(), est_pilot.real());
+        amp = sqrt(norm(cell)) / amp_pilot;
+        //Only for show
+        est_show[len_show].real(angle);
+        est_show[len_show].imag(amp);
+        ++len_show;
+        // ...
+        break;
+    case TRPAPR_CARRIER:
+        //TODO
+        //printf("TRPAPR_CARRIER\n");
+        break;
+    default:
+        break;
+    }
 
-        _phase_offset = (ph_2 + ph_1);
-        _sample_rate_offset = (dph_2 + dph_1) / static_cast<float>(len_show);
+    for (int i = half_total + 1; i < k_total; ++i){
+        cell = ofdm_cell[i];
+        pilot_refer = fc_pilot_refer[i];
+        switch (fc_carrier_map[i]){
+        case DATA_CARRIER:
+            buffer_cell[idx_data] = cell;
+            ++idx_data;
+            break;
+        case SCATTERED_CARRIER_INVERTED:
+        case SCATTERED_CARRIER:
+            if(pilot_refer < 0) {
+                cell = -cell;
+                pilot_refer = -pilot_refer;
+            }
+            est_dif = cell * conj(old_cell);
+            old_cell = cell;
+            est_pilot = cell * pilot_refer;
+            sum_pilot_2 += est_pilot;
+            sum_dif_2 += est_dif;
+            angle = atan2_approx(est_pilot.imag(), est_pilot.real());
+            delta_angle = (angle - angle_est) / (idx_data + 1);
+            amp = sqrt(norm(cell)) / amp_pilot;
+            delta_amp = (amp - amp_est) / (idx_data + 1);
+            for(int j = 0; j < idx_data; ++j){
+                angle_est += delta_angle;
+                amp_est += delta_amp;
+                derotate.real(cos_lut(angle_est) / amp_est);
+                derotate.imag(sin_lut(angle_est) / amp_est);
+                deinterleaved_cell[h[d]] = buffer_cell[j] * conj(derotate);
+                ++d;
+            }
+            idx_data = 0;
+            angle_est = angle;
+            amp_est = amp;
+            //Only for show
+            est_show[len_show].real(angle);
+            est_show[len_show].imag(amp);
+            ++len_show;
+            // ...
+            break;
+        case TRPAPR_CARRIER:
+            //TODO
+            //printf("TRPAPR_CARRIER\n");
+            break;
+        default:
+            break;
+        }
+    }
+    float ph_1 = atan2_approx(sum_pilot_1.imag(), sum_pilot_1.real());
+    float ph_2 = atan2_approx(sum_pilot_2.imag(), sum_pilot_2.real());
+    float dph_1 = atan2_approx(sum_dif_1.imag(), sum_dif_1.real());
+    float dph_2 = atan2_approx(sum_dif_2.imag(), sum_dif_2.real());
 
-        int len = 1024;
-        if(len < n_fc) len = n_fc;
-        memcpy(show_symbol, _ofdm_cell, sizeof(complex) * static_cast<unsigned int>(fft_size));
-        memcpy(show_data, deinterleaved_cell, sizeof(complex) * static_cast<unsigned int>(n_fc));
-        emit replace_spectrograph(fft_size, &show_symbol[0]);
-        emit replace_constelation(len, &show_data[0]);
+    _phase_offset = (ph_2 + ph_1);
+    _sample_rate_offset = (dph_2 + dph_1) / static_cast<float>(len_show);
 
-        return deinterleaved_cell;
+    int len = 1024;
+    if(len < n_fc) len = n_fc;
+    memcpy(show_symbol, _ofdm_cell, sizeof(complex) * static_cast<unsigned int>(fft_size));
+    memcpy(show_data, deinterleaved_cell, sizeof(complex) * static_cast<unsigned int>(n_fc));
+    emit replace_spectrograph(fft_size, &show_symbol[0]);
+    emit replace_constelation(len, &show_data[0]);
+
+    return deinterleaved_cell;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------

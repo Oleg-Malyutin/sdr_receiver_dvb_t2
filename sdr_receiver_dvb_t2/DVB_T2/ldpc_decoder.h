@@ -123,8 +123,6 @@ private:
 
     LDPCDecoder<simd_type, algorithm_type>* p_decode;
 
-    int CODE_LEN;
-    int DATA_LEN;
     void* aligned_buffer;
     simd_type *simd;
 

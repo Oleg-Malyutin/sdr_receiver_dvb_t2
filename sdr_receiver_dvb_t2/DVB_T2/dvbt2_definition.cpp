@@ -16,7 +16,7 @@
 
 #include <QMetaType>
 
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_p2_parameters_init(dvbt2_parameters &_dvbt2)
 {qRegisterMetaType<l1_postsignalling>();
     if ((_dvbt2.preamble == T2_SISO) || (_dvbt2.preamble == T2_LITE_SISO)){
@@ -87,7 +87,7 @@ void dvbt2_p2_parameters_init(dvbt2_parameters &_dvbt2)
     _dvbt2.carrier_mode = CARRIERS_EXTENDED;
     dvbt2_bwt_ext_parameters_init(_dvbt2);
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_bwt_ext_parameters_init(dvbt2_parameters &_dvbt2)
 {
     switch (_dvbt2.fft_mode){
@@ -155,7 +155,7 @@ void dvbt2_bwt_ext_parameters_init(dvbt2_parameters &_dvbt2)
 
     _dvbt2.l_nulls = ((_dvbt2.fft_size - _dvbt2.k_total) / 2) + 1;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void dvbt2_data_parameters_init(dvbt2_parameters &_dvbt2)
 {
     switch (_dvbt2.fft_mode){
@@ -644,4 +644,4 @@ void dvbt2_data_parameters_init(dvbt2_parameters &_dvbt2)
     else _dvbt2.l_fc = 1;
     _dvbt2.len_frame = _dvbt2.n_p2 + _dvbt2.n_data;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------

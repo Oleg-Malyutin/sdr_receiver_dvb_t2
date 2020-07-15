@@ -16,12 +16,12 @@
 
 #include "DSP/fast_math.h"
 
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 p2_symbol::p2_symbol(QObject *parent) : QObject(parent)
 {
     table_sin_cos_instance.table_();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 p2_symbol::~p2_symbol()
 {
     if(deinterleaved_cell != nullptr) delete [] deinterleaved_cell;
@@ -37,17 +37,16 @@ p2_symbol::~p2_symbol()
     if(l1_post.dyn.plp != nullptr) delete [] l1_post.dyn.plp;
     if(l1_post.dyn.aux_private_dyn != nullptr) delete [] l1_post.dyn.aux_private_dyn;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::init(dvbt2_parameters &_dvbt2, pilot_generator* _pilot,
                                address_freq_deinterleaver* _address)
 {
     fft_size = _dvbt2.fft_size;//32k
-    if ((_dvbt2.fft_mode == FFTSIZE_32K || _dvbt2.fft_mode == FFTSIZE_32K_T2GI) && (_dvbt2.miso == FALSE))
-    {
+    if ((_dvbt2.fft_mode == FFTSIZE_32K || _dvbt2.fft_mode == FFTSIZE_32K_T2GI) &&
+            (_dvbt2.miso == FALSE)) {
         amp_p2 = sqrt(37.0f) / 5.0f;
     }
-    else
-    {
+    else {
         amp_p2 = sqrt(31.0f) / 5.0f;
     }
     dvbt2_p2_parameters_init(_dvbt2);
@@ -71,239 +70,238 @@ void p2_symbol::init(dvbt2_parameters &_dvbt2, pilot_generator* _pilot,
 
     init_l1_randomizer();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::init_l1_randomizer()
 {
     int sr = 0x4A80;
-    for (int i = 0; i < KBCH_1_2; ++i)
-    {
+    for (int i = 0; i < KBCH_1_2; ++i) {
         int b = ((sr) ^ (sr >> 1)) & 1;
         l1_randomize[i] = static_cast<unsigned char>(b);
         sr >>= 1;
         if(b) sr |= 0x4000;
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 complex* p2_symbol::execute(dvbt2_parameters &_dvbt2, bool _demod_init, int &_idx_symbol, complex* _ofdm_cell,
                             l1_presignalling &_l1_pre, l1_postsignalling &_l1_post, bool &_crc32_l1_pre,
                             bool &_crc32_l1_post, float &_sample_rate_offset, float &_phase_offset)
 {
-        complex* ofdm_cell = &_ofdm_cell[left_nulls];
-        complex old_cell = {-1.0f, 0.0f};
-        complex est_pilot, est_dif;
-        float angle = 0.0f;
-        float delta_angle = 0.0f;
-        float angle_est = 0.0f;
-        float amp = 0.0f;
-        float delta_amp = 0.0f;
-        float amp_est = 0.0f;
-        complex sum_dif_1 = {0.0f, 0.0f};
-        complex sum_dif_2 = {0.0f, 0.0f};
-        complex sum_pilot_1 = {0.0f, 0.0f};
-        complex sum_pilot_2 = {0.0f, 0.0f};
-        int idx_symbol = _idx_symbol;
-        int len_est = 0;
-        float* pilot_refer_idx_p2_symbol = p2_pilot_refer[idx_symbol];
-        float pilot_refer;
-        float amp_pilot = amp_p2;
-        complex cell;
-        complex derotate;
-        int idx_data = 0;
-        int d = 0;
-        int* h;
+    complex* ofdm_cell = &_ofdm_cell[left_nulls];
+    complex old_cell = {-1.0f, 0.0f};
+    complex est_pilot, est_dif;
+    float angle = 0.0f;
+    float delta_angle = 0.0f;
+    float angle_est = 0.0f;
+    float amp = 0.0f;
+    float delta_amp = 0.0f;
+    float amp_est = 0.0f;
+    complex sum_dif_1 = {0.0f, 0.0f};
+    complex sum_dif_2 = {0.0f, 0.0f};
+    complex sum_pilot_1 = {0.0f, 0.0f};
+    complex sum_pilot_2 = {0.0f, 0.0f};
+    int idx_symbol = _idx_symbol;
+    int len_est = 0;
+    float* pilot_refer_idx_p2_symbol = p2_pilot_refer[idx_symbol];
+    float pilot_refer;
+    float amp_pilot = amp_p2;
+    complex cell;
+    complex derotate;
+    int idx_data = 0;
+    int d = 0;
+    int* h;
 
-        if(idx_symbol % 2 == 0) h = h_odd_p2;
-        else h = h_even_p2;
+    if(idx_symbol % 2 == 0) h = h_odd_p2;
+    else h = h_even_p2;
 
-        //__for first pilot______
-        cell = ofdm_cell[0];
-        pilot_refer = pilot_refer_idx_p2_symbol[0];
-        if(pilot_refer < 0) {
-            cell = -cell;
-            pilot_refer = -pilot_refer;
-        }
-        est_dif = cell * conj(old_cell);
-        old_cell = cell;
-        est_pilot = cell * pilot_refer;
-        est_dif = cell * conj(old_cell);
-        old_cell = cell;
-        sum_pilot_1 += est_pilot;
-        sum_dif_1 += est_dif;
-        angle_est = atan2_approx(est_pilot.imag(), est_pilot.real());
-        amp_est = sqrt(norm(cell)) / amp_pilot;
-        amp_est = amp;
-        //Only for show
-        est_data[len_est].real(angle_est);
-        est_data[len_est].imag(amp_est);
-        ++len_est;
-        //__ ... ______________
+    //__for first pilot______
+    cell = ofdm_cell[0];
+    pilot_refer = pilot_refer_idx_p2_symbol[0];
+    if(pilot_refer < 0) {
+        cell = -cell;
+        pilot_refer = -pilot_refer;
+    }
+    est_dif = cell * conj(old_cell);
+    old_cell = cell;
+    est_pilot = cell * pilot_refer;
+    est_dif = cell * conj(old_cell);
+    old_cell = cell;
+    sum_pilot_1 += est_pilot;
+    sum_dif_1 += est_dif;
+    angle_est = atan2_approx(est_pilot.imag(), est_pilot.real());
+    amp_est = sqrt(norm(cell)) / amp_pilot;
+    amp_est = amp;
+    //Only for show
+    est_data[len_est].real(angle_est);
+    est_data[len_est].imag(amp_est);
+    ++len_est;
+    //__ ... ______________
 
-        for (int i = 1; i < half_total; ++i){
-            cell = ofdm_cell[i];
-            pilot_refer = pilot_refer_idx_p2_symbol[i];
-            switch (p2_carrier_map[i]){
-            case DATA_CARRIER:
-                buffer_cell[idx_data] = cell;
-                ++idx_data;
-                break;
-            case P2CARRIER_INVERTED:
-            case P2CARRIER:
-                if(pilot_refer < 0) {
-                    cell = -cell;
-                    pilot_refer = -pilot_refer;
-                }
-                est_dif = cell * conj(old_cell);
-                old_cell = cell;
-                est_pilot = cell * pilot_refer;
-                    sum_pilot_1 += est_pilot;
-                    sum_dif_1 += est_dif;
-                angle = atan2_approx(est_pilot.imag(), est_pilot.real());
-                delta_angle = (angle - angle_est) / (idx_data + 1);
-                amp = sqrt(norm(cell)) / amp_pilot;
-                delta_amp = (amp - amp_est) / (idx_data + 1);
-                for(int j = 0; j < idx_data; ++j){
-                    angle_est += delta_angle;
-                    amp_est += delta_amp;
-                    derotate.real(cos_lut(angle_est) / amp_est);
-                    derotate.imag(sin_lut(angle_est) / amp_est);
-                    deinterleaved_cell[h[d]] = buffer_cell[j] * conj(derotate);
-                    ++d;
-                }
-                idx_data = 0;
-                angle_est = angle;
-                amp_est = amp;
-                //Only for show
-                est_data[len_est].real(angle_est);
-                est_data[len_est].imag(amp_est);
-                ++len_est;
-                // ...
-                break;
-            case  P2PAPR_CARRIER:
-                //TODO
-    //            printf(" P2PAPR_CARRIER\n");
-                break;
-            default:
-                break;
+    for (int i = 1; i < half_total; ++i){
+        cell = ofdm_cell[i];
+        pilot_refer = pilot_refer_idx_p2_symbol[i];
+        switch (p2_carrier_map[i]){
+        case DATA_CARRIER:
+            buffer_cell[idx_data] = cell;
+            ++idx_data;
+            break;
+        case P2CARRIER_INVERTED:
+        case P2CARRIER:
+            if(pilot_refer < 0) {
+                cell = -cell;
+                pilot_refer = -pilot_refer;
             }
-        }
-        cell = ofdm_cell[half_total];
-        pilot_refer = pilot_refer_idx_p2_symbol[half_total];
-        if(pilot_refer < 0) {
-            cell = -cell;
-            pilot_refer = -pilot_refer;
-        }
-        est_pilot = cell * pilot_refer;
-        angle = atan2_approx(est_pilot.imag(), est_pilot.real());
-        amp = sqrt(norm(cell)) / amp_pilot;
-        //Only for show
-        est_data[len_est].real(angle);
-        est_data[len_est].imag(amp);
-        ++len_est;
-        // ...
-        for (int i = half_total + 1; i < k_total; ++i){
-            cell = ofdm_cell[i];
-            pilot_refer = pilot_refer_idx_p2_symbol[i];
-            switch (p2_carrier_map[i]){
-            case DATA_CARRIER:
-                buffer_cell[idx_data] = cell;
-                ++idx_data;
-                break;
-            case P2CARRIER_INVERTED:
-            case P2CARRIER:
-                if(pilot_refer < 0) {
-                    cell = -cell;
-                    pilot_refer = -pilot_refer;
-                }
-                est_dif = cell * conj(old_cell);
-                old_cell = cell;
-                est_pilot = cell * pilot_refer;
-                    sum_pilot_2 += est_pilot;
-                    sum_dif_2 += est_dif;
-                angle = atan2_approx(est_pilot.imag(), est_pilot.real());
-                delta_angle = (angle - angle_est) / (idx_data + 1);
-                amp = sqrt(norm(cell)) / amp_pilot;
-                delta_amp = (amp - amp_est) / (idx_data + 1);
-                for(int j = 0; j < idx_data; ++j){
-                    angle_est += delta_angle;
-                    amp_est += delta_amp;
-                    derotate.real(cos_lut(angle_est) / amp_est);
-                    derotate.imag(sin_lut(angle_est) / amp_est);
-                    deinterleaved_cell[h[d]] = buffer_cell[j] * conj(derotate);
-                    ++d;
-                }
-                idx_data = 0;
-                angle_est = angle;
-                amp_est = amp;
-                //Only for show
-                est_data[len_est].real(angle_est);
-                est_data[len_est].imag(amp_est);
-                ++len_est;
-                // ...
-                break;
-            case  P2PAPR_CARRIER:
-                //TODO
-    //            printf(" P2PAPR_CARRIER\n");
-                break;
-            default:
-                break;
+            est_dif = cell * conj(old_cell);
+            old_cell = cell;
+            est_pilot = cell * pilot_refer;
+            sum_pilot_1 += est_pilot;
+            sum_dif_1 += est_dif;
+            angle = atan2_approx(est_pilot.imag(), est_pilot.real());
+            delta_angle = (angle - angle_est) / (idx_data + 1);
+            amp = sqrt(norm(cell)) / amp_pilot;
+            delta_amp = (amp - amp_est) / (idx_data + 1);
+            for(int j = 0; j < idx_data; ++j){
+                angle_est += delta_angle;
+                amp_est += delta_amp;
+                derotate.real(cos_lut(angle_est) / amp_est);
+                derotate.imag(sin_lut(angle_est) / amp_est);
+                deinterleaved_cell[h[d]] = buffer_cell[j] * conj(derotate);
+                ++d;
             }
+            idx_data = 0;
+            angle_est = angle;
+            amp_est = amp;
+            //Only for show
+            est_data[len_est].real(angle_est);
+            est_data[len_est].imag(amp_est);
+            ++len_est;
+            // ...
+            break;
+        case  P2PAPR_CARRIER:
+            //TODO
+            //            printf(" P2PAPR_CARRIER\n");
+            break;
+        default:
+            break;
         }
+    }
+    cell = ofdm_cell[half_total];
+    pilot_refer = pilot_refer_idx_p2_symbol[half_total];
+    if(pilot_refer < 0) {
+        cell = -cell;
+        pilot_refer = -pilot_refer;
+    }
+    est_pilot = cell * pilot_refer;
+    angle = atan2_approx(est_pilot.imag(), est_pilot.real());
+    amp = sqrt(norm(cell)) / amp_pilot;
+    //Only for show
+    est_data[len_est].real(angle);
+    est_data[len_est].imag(amp);
+    ++len_est;
+    // ...
+    for (int i = half_total + 1; i < k_total; ++i){
+        cell = ofdm_cell[i];
+        pilot_refer = pilot_refer_idx_p2_symbol[i];
+        switch (p2_carrier_map[i]){
+        case DATA_CARRIER:
+            buffer_cell[idx_data] = cell;
+            ++idx_data;
+            break;
+        case P2CARRIER_INVERTED:
+        case P2CARRIER:
+            if(pilot_refer < 0) {
+                cell = -cell;
+                pilot_refer = -pilot_refer;
+            }
+            est_dif = cell * conj(old_cell);
+            old_cell = cell;
+            est_pilot = cell * pilot_refer;
+            sum_pilot_2 += est_pilot;
+            sum_dif_2 += est_dif;
+            angle = atan2_approx(est_pilot.imag(), est_pilot.real());
+            delta_angle = (angle - angle_est) / (idx_data + 1);
+            amp = sqrt(norm(cell)) / amp_pilot;
+            delta_amp = (amp - amp_est) / (idx_data + 1);
+            for(int j = 0; j < idx_data; ++j){
+                angle_est += delta_angle;
+                amp_est += delta_amp;
+                derotate.real(cos_lut(angle_est) / amp_est);
+                derotate.imag(sin_lut(angle_est) / amp_est);
+                deinterleaved_cell[h[d]] = buffer_cell[j] * conj(derotate);
+                ++d;
+            }
+            idx_data = 0;
+            angle_est = angle;
+            amp_est = amp;
+            //Only for show
+            est_data[len_est].real(angle_est);
+            est_data[len_est].imag(amp_est);
+            ++len_est;
+            // ...
+            break;
+        case  P2PAPR_CARRIER:
+            //TODO
+            //            printf(" P2PAPR_CARRIER\n");
+            break;
+        default:
+            break;
+        }
+    }
 
-        float ph_1 = atan2_approx(sum_pilot_1.imag(), sum_pilot_1.real());
-        float ph_2 = atan2_approx(sum_pilot_2.imag(), sum_pilot_2.real());
-        float dph_1 = atan2_approx(sum_dif_1.imag(), sum_dif_1.real());
-        float dph_2 = atan2_approx(sum_dif_2.imag(), sum_dif_2.real());
+    float ph_1 = atan2_approx(sum_pilot_1.imag(), sum_pilot_1.real());
+    float ph_2 = atan2_approx(sum_pilot_2.imag(), sum_pilot_2.real());
+    float dph_1 = atan2_approx(sum_dif_1.imag(), sum_dif_1.real());
+    float dph_2 = atan2_approx(sum_dif_2.imag(), sum_dif_2.real());
 
-        _phase_offset = (ph_2 + ph_1);
-        _sample_rate_offset = (dph_2 + dph_1) / static_cast<float>(len_est);
+    _phase_offset = (ph_2 + ph_1);
+    _sample_rate_offset = (dph_2 + dph_1) / static_cast<float>(len_est);
 
-        memcpy(show_symbol, _ofdm_cell, sizeof(complex) * static_cast<unsigned long>(fft_size));
-        int len_show = L1_PRE_CELL;
-        int idx_show = 0;
-        if(_crc32_l1_pre){
-            switch (id_show) {
-            case 1:
-                len_show = l1_pre.l1_post_size;
-                idx_show = L1_PRE_CELL;
-                break;
-            case 2:
-                len_show = 1024;
-                if(len_show < c_p2) len_show = c_p2;
-                idx_show = l1_pre.l1_post_size + L1_PRE_CELL;
-                break;
-            }
+    memcpy(show_symbol, _ofdm_cell, sizeof(complex) * static_cast<unsigned long>(fft_size));
+    int len_show = L1_PRE_CELL;
+    int idx_show = 0;
+    if(_crc32_l1_pre){
+        switch (id_show) {
+        case 1:
+            len_show = l1_pre.l1_post_size;
+            idx_show = L1_PRE_CELL;
+            break;
+        case 2:
+            len_show = 1024;
+            if(len_show < c_p2) len_show = c_p2;
+            idx_show = l1_pre.l1_post_size + L1_PRE_CELL;
+            break;
         }
-        memcpy(show_data, deinterleaved_cell, sizeof(complex) * static_cast<unsigned long>(c_p2));
-        emit replace_spectrograph(fft_size, &show_symbol[0]);
-        emit replace_constelation(len_show, &show_data[idx_show]);
-        memcpy(show_est_data, est_data, sizeof(complex) * static_cast<unsigned long>(len_est));
-        emit replace_oscilloscope(len_est, show_est_data);
+    }
+    memcpy(show_data, deinterleaved_cell, sizeof(complex) * static_cast<unsigned long>(c_p2));
+    emit replace_spectrograph(fft_size, &show_symbol[0]);
+    emit replace_constelation(len_show, &show_data[idx_show]);
+    memcpy(show_est_data, est_data, sizeof(complex) * static_cast<unsigned long>(len_est));
+    emit replace_oscilloscope(len_est, show_est_data);
 
-        if(_demod_init) {
-            if(l1_post_info()) {
-                _l1_post = l1_post;
-                _crc32_l1_post = true;
-                return deinterleaved_cell;
-            }
+    if(_demod_init) {
+        if(l1_post_info()) {
+            _l1_post = l1_post;
+            _crc32_l1_post = true;
+            return deinterleaved_cell;
         }
-        else if(l1_pre_info(_dvbt2)) {
-            _l1_pre = l1_pre;
-            _crc32_l1_pre = true;
-            if(l1_post_info()) {
-                _l1_post = l1_post;
-                _crc32_l1_post = true;
-            }
-            else{
-                _crc32_l1_post = false;
-            }
+    }
+    else if(l1_pre_info(_dvbt2)) {
+        _l1_pre = l1_pre;
+        _crc32_l1_pre = true;
+        if(l1_post_info()) {
+            _l1_post = l1_post;
+            _crc32_l1_post = true;
         }
         else{
-            _crc32_l1_pre = false;
             _crc32_l1_post = false;
         }
-        return deinterleaved_cell;
+    }
+    else{
+        _crc32_l1_pre = false;
+        _crc32_l1_post = false;
+    }
+    return deinterleaved_cell;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 bool p2_symbol::l1_pre_info(dvbt2_parameters &_dvbt2)
 {
     unsigned int crc = 0xffffffff;
@@ -536,7 +534,7 @@ bool p2_symbol::l1_pre_info(dvbt2_parameters &_dvbt2)
 
     return true;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 bool p2_symbol::l1_post_info()
 {
     unsigned int crc = 0xffffffff;
@@ -722,7 +720,7 @@ bool p2_symbol::l1_post_info()
     return true;
 
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::time_frequency_slicing_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = 0;
@@ -733,7 +731,7 @@ void p2_symbol::time_frequency_slicing_info(unsigned char *bit, l1_postsignallin
     text_l1_post += "SUB_SLISER_PER_FRAME  " +
                                 QString::number(l1_post.sub_slices_per_frame) + "\n";
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::plp_info(unsigned char *bit, l1_postsignalling &l1)
 {
     text_l1_post += "NUM_PLP\t\t" + QString::number(l1_post.num_plp) + "\n";
@@ -844,7 +842,7 @@ void p2_symbol::plp_info(unsigned char *bit, l1_postsignalling &l1)
               "  STATIC_PADDING_FLAG " + QString::number(l1_post.plp[i].static_padding_flag) + "\n";
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::rf_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = 35;
@@ -863,7 +861,7 @@ void p2_symbol::rf_info(unsigned char *bit, l1_postsignalling &l1)
               "  FREQUENCY\t" + QString::number(l1_post.rf[i].frequency) + "\n";
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::fef_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx;
@@ -897,7 +895,7 @@ void p2_symbol::fef_info(unsigned char *bit, l1_postsignalling &l1)
           + "FEF_LENGHT_MSB\t" + QString::number(l1_post.fef_length_msb) + "\n"
           + "RESERVED_2\t" + QString::number(l1_post.reserved_2) + "\n";
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::aux_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = 27;
@@ -924,7 +922,7 @@ void p2_symbol::aux_info(unsigned char *bit, l1_postsignalling &l1)
               "  AUX_PRIVATE_CONFIG " + QString::number(l1_post.aux[i].aux_private_config) + "\n";
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::dyn_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = idx_l1_post_configurable_shift;
@@ -959,7 +957,7 @@ void p2_symbol::dyn_info(unsigned char *bit, l1_postsignalling &l1)
           + "DYN_START_RF_IDX\t" + QString::number(l1_post.dyn.start_rf_idx) + "\n"
           + "DYN_RESERVED_1\t" + QString::number(l1_post.dyn.reserved_1) + "\n";
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::dyn_plp_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = idx_l1_post_configurable_shift + 71;
@@ -990,7 +988,7 @@ void p2_symbol::dyn_plp_info(unsigned char *bit, l1_postsignalling &l1)
               "  DYN_RESERVED_2\t" + QString::number(l1_post.dyn.plp[i].reserved_2) + "\n";
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::dyn_aux_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = idx_l1_post_configurable_shift + idx_l1_post_dyn_plp_shift + 119;
@@ -1007,7 +1005,7 @@ void p2_symbol::dyn_aux_info(unsigned char *bit, l1_postsignalling &l1)
     }
     text_l1_dynamic += "DYN_RESERVED_3\t" + QString::number(l1_post.dyn.reserved_3) + "\n";
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::dyn_next_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = idx_l1_post_dyn_shift;
@@ -1042,7 +1040,7 @@ void p2_symbol::dyn_next_info(unsigned char *bit, l1_postsignalling &l1)
           + "DYN_NEXT_START_RF_IDX " + QString::number(l1_post.dyn_next.start_rf_idx) + "\n"
           + "DYN_NEXT_RESERVED_1 " + QString::number(l1_post.dyn_next.reserved_1) + "\n";
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::dyn_next_plp_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = idx_l1_post_dyn_shift + 71;
@@ -1073,7 +1071,7 @@ void p2_symbol::dyn_next_plp_info(unsigned char *bit, l1_postsignalling &l1)
               "  DYN_NEXT_RESERVED_2 " + QString::number(l1_post.dyn_next.plp[i].reserved_2) + "\n";
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void p2_symbol::dyn_next_aux_info(unsigned char *bit, l1_postsignalling &l1)
 {
     int idx = idx_l1_post_dyn_shift + 119;
@@ -1090,4 +1088,4 @@ void p2_symbol::dyn_next_aux_info(unsigned char *bit, l1_postsignalling &l1)
     }
     text_l1_dynamic += "DYN_NEXT_RESERVED_3 " + QString::number(l1_post.dyn_next.reserved_3) + "\n";
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------

@@ -110,7 +110,7 @@ ldpc_decoder::ldpc_decoder(QWaitCondition* _signal_in, QMutex *_mutex_in, QObjec
     decode_short_cod_5_6.init(ldpc_fec_short_cod_5_6);
 
     aligned_buffer = aligned_alloc(sizeof(simd_type), sizeof(simd_type) * FEC_SIZE_NORMAL);
-    simd = reinterpret_cast<simd_type *>(aligned_buffer);
+    simd = reinterpret_cast<simd_type*>(aligned_buffer);
 
     ldpc_fec = new uint8_t[FEC_SIZE_NORMAL * SIZEOF_SIMD];  // for fec size normal
     const unsigned int len_buffer = 54000 * SIZEOF_SIMD;    // for ldpc code 5/6
@@ -155,6 +155,9 @@ void ldpc_decoder::execute(int* _idx_plp_simd, l1_postsignalling _l1_post, int _
 {
     mutex_in->lock();
     signal_in->wakeOne();
+
+//                    mutex_in->unlock();
+//                    return;
 
     int* plp_id = _idx_plp_simd;
     l1_postsignalling l1_post = _l1_post;
@@ -238,39 +241,41 @@ void ldpc_decoder::execute(int* _idx_plp_simd, l1_postsignalling _l1_post, int _
     }
 
     int k = 0;
-    for(int j = 0; j < len_in; j += fec_size){
-        for (int i = 0; i < k_ldpc; ++i){
-            reinterpret_cast<code_type *>(simd + i)[k] = in[j + i];
+    for(int j = 0; j < len_in; j += fec_size) {
+        for (int i = 0; i < k_ldpc; ++i) {
+            reinterpret_cast<code_type*>(simd + i)[k] = in[j + i];
         }
         for (int t = 0; t < q_ldpc; ++t) {
             for (int s = 0; s < 360; ++s) {
-                reinterpret_cast<code_type *>(simd + k_ldpc + q_ldpc * s + t)[k] =
+                reinterpret_cast<code_type*>(simd + k_ldpc + q_ldpc * s + t)[k] =
                         in[j + k_ldpc + 360 * t + s];
             }
         }
         ++k;
     }
+
     int trials = TRIALS;
     int count = (*p_decode)(simd, simd + k_ldpc, trials, SIZEOF_SIMD);
     if (count < 0) {
-        qDebug() << "LDPC decoder could not recover the codeword!";
+        fprintf(stderr, "LDPC decoder could not recover the codeword! %d\n", count);
+        mutex_in->unlock();
+        return;
     }
 
-    int n = 0;
-    for(int j = 0; j < SIZEOF_SIMD; ++j){
-        for (int i = 0; i < k_ldpc; ++i){
-            if(reinterpret_cast<code_type *>(simd + i)[j] >= 0){
-                *bch_fec++ = 0;
-            }
-            else{
-                *bch_fec++ = 1;
-            }
+    int8_t *s;
+    for(int j = 0; j < SIZEOF_SIMD; ++j) {
+        for (int i = 0; i < k_ldpc; ++i) {
+            s = reinterpret_cast<code_type*>(simd + i);
+            if(s[j] < 0) *bch_fec++ = 1;
+            else         *bch_fec++ = 0;
         }
-        n += fec_size;
     }
+
+//    bch_fec = buffer_a;
+
 
     int len_out = k_ldpc * SIZEOF_SIMD;
-    if(swap_buffer){
+    if(swap_buffer) {
         swap_buffer = false;
         mutex_out->lock();
         emit bit_bch(plp_id, l1_post, len_out, buffer_a);
@@ -278,7 +283,7 @@ void ldpc_decoder::execute(int* _idx_plp_simd, l1_postsignalling _l1_post, int _
         mutex_out->unlock();
         bch_fec = buffer_b;
     }
-    else{
+    else {
         swap_buffer = true;
         mutex_out->lock();
         emit bit_bch(plp_id, l1_post, len_out, buffer_b);

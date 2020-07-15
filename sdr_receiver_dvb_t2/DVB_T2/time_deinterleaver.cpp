@@ -16,7 +16,7 @@
 
 #include <immintrin.h>
 
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 time_deinterleaver::time_deinterleaver(QWaitCondition* _signal_in, QMutex *_mutex, QObject *parent) :
     QObject(parent),
     signal_in(_signal_in),
@@ -34,7 +34,7 @@ time_deinterleaver::time_deinterleaver(QWaitCondition* _signal_in, QMutex *_mute
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     thread->start();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void time_deinterleaver::start(dvbt2_parameters _dvbt2, l1_presignalling _l1_pre, l1_postsignalling _l1_post)
 
 {
@@ -143,7 +143,7 @@ void time_deinterleaver::start(dvbt2_parameters _dvbt2, l1_presignalling _l1_pre
     show_data = new complex[len_max];
     flag_start = true;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 time_deinterleaver::~time_deinterleaver()
 {
     emit stop_qam();
@@ -170,7 +170,7 @@ time_deinterleaver::~time_deinterleaver()
         delete [] show_data;
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void time_deinterleaver::address_cell_deinterleaving(int _num_fec_block_max, int _cells_per_fec_block,
                                                      int* _permutations)
 {
@@ -264,7 +264,7 @@ void time_deinterleaver::address_cell_deinterleaving(int _num_fec_block_max, int
     }
     delete [] first_permutation;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void time_deinterleaver::l1_dyn_init(l1_postsignalling _l1_post, int _len_in, complex* _ofdm_cell)
 {
     // dynamic l1 post signaling
@@ -284,15 +284,15 @@ void time_deinterleaver::l1_dyn_init(l1_postsignalling _l1_post, int _len_in, co
     start_t2_frame = true;
     execute(_len_in, _ofdm_cell);
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void time_deinterleaver::execute(int _len_in, complex* _ofdm_cell)
 {
     mutex_in->lock();
     signal_in->wakeOne();
 
 
-//    mutex_in->unlock();
-//    return;
+//            mutex_in->unlock();
+//            return;
 
 
     int num_cells = _len_in;
@@ -376,9 +376,9 @@ void time_deinterleaver::execute(int _len_in, complex* _ofdm_cell)
     }
     mutex_in->unlock();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void time_deinterleaver::stop()
 {
     emit finished();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------

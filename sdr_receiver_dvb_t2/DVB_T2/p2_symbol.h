@@ -35,7 +35,7 @@ class p2_symbol : public QObject
     Q_OBJECT
 
 public:
-    p2_symbol(QObject* parent = nullptr);
+    explicit p2_symbol(QObject* parent = nullptr);
     ~p2_symbol();
     void init(dvbt2_parameters &_dvbt2, pilot_generator* _pilot,
                                    address_freq_deinterleaver* _address);

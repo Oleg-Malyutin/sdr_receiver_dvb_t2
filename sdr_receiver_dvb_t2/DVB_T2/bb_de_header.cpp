@@ -17,7 +17,7 @@
 #include <QMessageBox>
 #include <QTextStream>
 
-#include <QDebug>
+//#include <QDebug>
 
 #define CRC_POLY 0xAB
 #define CRC_POLYR 0xD5
@@ -31,10 +31,10 @@ bb_de_header::bb_de_header(QWaitCondition *_signal_in, QMutex *_mutex_in, QObjec
     mutex_in(_mutex_in)
 {
     init_crc8_table();
-
-    out = new uint8_t[53840 / 8];
+    len = 53840 / 8 + TRANSPORT_PACKET_LENGTH * 2;//split tail ?
+    out = new uint8_t[len];
     begin_out = out;
-    buffer_out = new char[53840 / 8];
+    buffer_out = new char[len];
 
     stream = new QDataStream;
     stream->setVersion(QDataStream::Qt_5_1);
@@ -93,7 +93,6 @@ void bb_de_header::execute(int _plp_id, l1_postsignalling _l1_post, int _len_in,
     int len_in = _len_in;
     uint8_t* in = _in;
     dvbt2_inputmode_t mode;
-    bool check_mode;
     int errors = 0;
     int len_split = 0;
     int len_out = 0;
@@ -102,11 +101,9 @@ void bb_de_header::execute(int _plp_id, l1_postsignalling _l1_post, int _len_in,
     switch(check_crc8_mode(in, BB_HEADER_LENGTH_BITS)){
     case 0:
         mode = INPUTMODE_NORMAL;
-        check_mode = true;
         break;
     case CRC_POLY:
         mode = INPUTMODE_HIEFF;
-        check_mode = true;
         break;
     default:
         info_already_set = false;
@@ -130,8 +127,12 @@ void bb_de_header::execute(int _plp_id, l1_postsignalling _l1_post, int _len_in,
       }
     }
     else {
-      in += 8;
+        in += 8;
     }
+    header.upl = 0;
+    header.dfl = 0;
+    header.sync = 0;
+    header.syncd = 0;
 
     if(!info_already_set) set_info(_plp_id, l1_post, mode, header);
 
@@ -139,20 +140,15 @@ void bb_de_header::execute(int _plp_id, l1_postsignalling _l1_post, int _len_in,
         mutex_in->unlock();
         return;
     }
-
-    header.upl = 0;
     for (int i = 15; i >= 0; --i) {
       header.upl |= *in++ << i;
-    }
-    header.dfl = 0;
+    } 
     for (int i = 15; i >= 0; --i) {
       header.dfl |= *in++ << i;
     }
-    header.sync = 0;
     for (int i = 7; i >= 0; --i) {
       header.sync |= *in++ << i;
     }
-    header.syncd = 0;
     for (int i = 15; i >= 0; --i) {
       header.syncd |= *in++ << i;
     }
@@ -242,6 +238,11 @@ void bb_de_header::execute(int _plp_id, l1_postsignalling _l1_post, int _len_in,
             in += header.syncd + 8;
         }
         header.dfl -= header.syncd + 8;
+//        if(len < (len_out + header.dfl / 8)) {
+//            mutex_in->unlock();
+//            emit ts_stage("Baseband header error.");
+//            return;
+//        }
         while (header.dfl > 0) {
             if (header.dfl < BIT_PACKET_LENGTH) {
                 split = true;
@@ -383,6 +384,7 @@ void bb_de_header::execute(int _plp_id, l1_postsignalling _l1_post, int _len_in,
             in += header.syncd;
         }
         header.dfl -= header.syncd;
+
         while (header.dfl > 0) {
             if (header.dfl < BIT_PACKET_LENGTH) {
                 split = true;
@@ -412,7 +414,7 @@ void bb_de_header::execute(int _plp_id, l1_postsignalling _l1_post, int _len_in,
                 }
                 else{
                     temp = 0;
-                    for (int n = 7; n >= 0; n--) {
+                    for (int n = 7; n >= 0; --n) {
                         temp |= *in++ << n;
                     }
                     *out++ = temp;
