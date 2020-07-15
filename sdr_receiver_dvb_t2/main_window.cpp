@@ -15,7 +15,7 @@
 #include "main_window.h"
 #include "ui_main_window.h"
 
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 main_window::main_window(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::main_window)
@@ -24,6 +24,7 @@ main_window::main_window(QWidget *parent)
 
     connect(ui->action_sdrplay, SIGNAL(triggered()), this, SLOT(open_sdrplay()));
     connect(ui->action_airspy, SIGNAL(triggered()), this, SLOT(open_airspy()));
+    connect(ui->action_plutosdr, SIGNAL(triggered()), this, SLOT(open_plutosdr()));
     connect(ui->action_exit, SIGNAL(triggered()), this, SLOT(close()));
 
     ui->tab_widget->setCurrentIndex(0);
@@ -52,7 +53,7 @@ main_window::main_window(QWidget *parent)
     connect(button_group_p2_symbol, static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked),
             this, &main_window::set_show_p2_symbol);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 main_window::~main_window()
 {
     delete ui;
@@ -69,27 +70,40 @@ main_window::~main_window()
     delete equalizer_oscilloscope;
     delete button_group_p2_symbol;
 }
-//----------------------------------------------------------------------------------------------------
-void main_window::get_device()
+//---------------------------------------------------------------------------------------------------------------------------------
+void main_window::closeEvent(QCloseEvent *event)
 {
-
+    Q_UNUSED(event);
+    switch (id_device) {
+    case id_sdrplay:
+        break;
+    case id_airspy:
+        break;
+    case id_plutosdr:
+        if(thread == nullptr) ptr_plutosdr->reboot();
+        break;
+    }
+    if(thread != nullptr) {
+        emit stop_device();
+        if(thread->isRunning()) thread->wait(1000);
+    }
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_check_box_agc_stateChanged(int arg1)
 {
     if(arg1 == 2) ui->line_edit_gain->setEnabled(false);
     else ui->line_edit_gain->setEnabled(true);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::open_sdrplay()
 {
     int err;
     char* ser_no = nullptr;
     unsigned char hw_ver;
     ptr_sdrplay = new rx_sdrplay;
-    err = ptr_sdrplay->get_sdrplay(ser_no, hw_ver);
+    err = ptr_sdrplay->get(ser_no, hw_ver);
     ui->text_log->insertPlainText("Get SdrPlay:"  " " +
-                                  QString::fromStdString(ptr_sdrplay->error_sdrplay(err)) + "\n");
+                                  QString::fromStdString(ptr_sdrplay->error(err)) + "\n");
     if(err !=0) return;
 
     ui->label_name->setText("Name : SdrPlay");
@@ -100,8 +114,8 @@ void main_window::open_sdrplay()
     id_device = id_sdrplay;
     ui->push_button_start->setEnabled(true);
 }
-//----------------------------------------------------------------------------------------------------
-void main_window::start_sdrplay()
+//---------------------------------------------------------------------------------------------------------------------------------
+int main_window::start_sdrplay()
 {
     double rf_fraquency;
     int gain_db;
@@ -109,10 +123,10 @@ void main_window::start_sdrplay()
     rf_fraquency = ui->line_edit_rf->text().toDouble();
     gain_db = ui->line_edit_gain->text().toInt();
     if(ui->check_box_agc->isChecked()) gain_db = -1;
-    err = ptr_sdrplay->init_sdrplay(rf_fraquency, gain_db);
+    err = ptr_sdrplay->init(rf_fraquency, gain_db);
     ui->text_log->insertPlainText("Init SdrPlay:"  " "  +
-                                  QString::fromStdString(ptr_sdrplay->error_sdrplay(err)) + "\n");
-    if(err !=0) return;
+                                  QString::fromStdString(ptr_sdrplay->error(err)) + "\n");
+    if(err !=0) return err;
 
     thread = new QThread;
     ptr_sdrplay->moveToThread(thread);
@@ -123,32 +137,27 @@ void main_window::start_sdrplay()
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
     thread->start(QThread::TimeCriticalPriority);
 
-    connect(ptr_sdrplay, &rx_sdrplay::sdrplay_status, this, &main_window::sdrplay_status);
+    connect(ptr_sdrplay, &rx_sdrplay::status, this, &main_window::status_sdrplay);
     connect(ptr_sdrplay, &rx_sdrplay::radio_frequency, this, &main_window::radio_frequency);
-    connect(ptr_sdrplay, &rx_sdrplay::device_gain, this, &main_window::device_gain);
+    connect(ptr_sdrplay, &rx_sdrplay::level_gain, this, &main_window::level_gain);
+    return 0;
 }
-//----------------------------------------------------------------------------------------------------
-void main_window::sdrplay_status(int _err)
+//---------------------------------------------------------------------------------------------------------------------------------
+void main_window::status_sdrplay(int _err)
 {
     ui->text_log->insertPlainText("Status SdrPlay:"  " "  +
-                                  QString::fromStdString(ptr_sdrplay->error_sdrplay(_err)) + "\n");
+                                  QString::fromStdString(ptr_sdrplay->error(_err)) + "\n");
 }
-//----------------------------------------------------------------------------------------------------
-void main_window::airspy_status(int _err)
-{
-    ui->text_log->insertPlainText("Status AirSpy:"  " "  +
-                                  QString::fromStdString(ptr_airspy->error_airspy(_err)) + "\n");
-}
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::open_airspy()
 {
     int err;
     string ser_no;
     string hw_ver;
     ptr_airspy = new rx_airspy;
-    err = ptr_airspy->get_airspy(ser_no, hw_ver);
+    err = ptr_airspy->get(ser_no, hw_ver);
     ui->text_log->insertPlainText("Get AirSpy:"  " " +
-                                  QString::fromStdString(ptr_airspy->error_airspy(err)) + "\n");
+                                  QString::fromStdString(ptr_airspy->error(err)) + "\n");
     if(err < 0) return;
 
     ui->label_name->setText("Name : AirSpy");
@@ -160,8 +169,8 @@ void main_window::open_airspy()
     ui->push_button_start->setEnabled(true);
 
 }
-//----------------------------------------------------------------------------------------------------
-void main_window::start_airspy()
+//---------------------------------------------------------------------------------------------------------------------------------
+int main_window::start_airspy()
 {
     uint32_t rf_fraquency_hz;
     int gain;
@@ -169,10 +178,10 @@ void main_window::start_airspy()
     rf_fraquency_hz = static_cast<uint32_t>(ui->line_edit_rf->text().toULong());
     gain = static_cast<uint8_t>(ui->line_edit_gain->text().toUInt());
     if(ui->check_box_agc->isChecked()) gain = -1;
-    err = ptr_airspy->init_airspy(rf_fraquency_hz, gain);
+    err = ptr_airspy->init(rf_fraquency_hz, gain);
     ui->text_log->insertPlainText("Init AirSpy:"  " "  +
-                                  QString::fromStdString(ptr_airspy->error_airspy(err)) + "\n");
-    if(err !=0) return;
+                                  QString::fromStdString(ptr_airspy->error(err)) + "\n");
+    if(err !=0) return err;
 
     thread = new QThread;
     ptr_airspy->moveToThread(thread);
@@ -183,33 +192,109 @@ void main_window::start_airspy()
     connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
     thread->start(QThread::TimeCriticalPriority);
 
-    connect(ptr_airspy, &rx_airspy::airspy_status, this, &main_window::airspy_status);
+    connect(ptr_airspy, &rx_airspy::status, this, &main_window::status_airspy);
     connect(ptr_airspy, &rx_airspy::radio_frequency, this, &main_window::radio_frequency);
-    connect(ptr_airspy, &rx_airspy::device_gain, this, &main_window::device_gain);
+    connect(ptr_airspy, &rx_airspy::level_gain, this, &main_window::level_gain);
+
+    return 0;
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
+void main_window::status_airspy(int _err)
+{
+    ui->text_log->insertPlainText("Status AirSpy:"  " "  +
+                                  QString::fromStdString(ptr_airspy->error(_err)) + "\n");
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+void main_window::open_plutosdr()
+{
+    int err;
+    string ser_no;
+    string hw_ver;
+    ptr_plutosdr = new rx_plutosdr;
+    err = ptr_plutosdr->get(ser_no, hw_ver);
+    ui->text_log->insertPlainText("Get PlutoSDR:" +
+                                  QString::fromStdString(ptr_plutosdr->error(err)) + "\n");
+    if(err < 0) return;
+
+    ui->label_name->setText("Name : ADALM-PLUTO");
+    ui->label_ser_no->setText("Serial No : " + QString::fromStdString(ser_no));
+    ui->label_hw_ver->setText("HW: " + QString::fromStdString(hw_ver));
+    ui->label_gain->setText("gain (0-73):");
+
+    id_device = id_plutosdr;
+    ui->push_button_start->setEnabled(true);
+
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+int main_window::start_plutosdr()
+{
+    uint64_t rf_fraquency_hz;
+    int gain;
+    int err;
+    rf_fraquency_hz = static_cast<uint64_t>(ui->line_edit_rf->text().toULong());
+    gain = static_cast<uint8_t>(ui->line_edit_gain->text().toUInt());
+    if(ui->check_box_agc->isChecked()) gain = -1;
+    err = ptr_plutosdr->init(rf_fraquency_hz, gain);
+    ui->text_log->insertPlainText("Init PlutoSDR:"  " "  +
+                                  QString::fromStdString(ptr_plutosdr->error(err)) + "\n");
+    if(err !=0) return err;
+
+    thread = new QThread;
+    ptr_plutosdr->moveToThread(thread);
+    connect(thread, SIGNAL(started()), ptr_plutosdr, SLOT(start()));
+    connect(this,SIGNAL(stop_device()),ptr_plutosdr,SLOT(stop()),Qt::DirectConnection);
+    connect(ptr_plutosdr, SIGNAL(finished()), ptr_plutosdr, SLOT(deleteLater()));
+    connect(ptr_plutosdr, SIGNAL(finished()), thread, SLOT(quit()),Qt::DirectConnection);
+    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+    thread->start(QThread::TimeCriticalPriority);
+
+    connect(ptr_plutosdr, &rx_plutosdr::status, this, &main_window::status_plutosdr);
+    connect(ptr_plutosdr, &rx_plutosdr::radio_frequency, this, &main_window::radio_frequency);
+    connect(ptr_plutosdr, &rx_plutosdr::level_gain, this, &main_window::level_gain);
+
+    return 0;
+}
+//---------------------------------------------------------------------------------------------------------------------------------
+void main_window::status_plutosdr(int _err)
+{
+    ui->text_log->insertPlainText("Status PlutoSDR:"  " "  +
+                                  QString::fromStdString(ptr_plutosdr->error(_err)) + "\n");
+}
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_push_button_start_clicked()
 {
-    ui->push_button_stop->setEnabled(true);
+    ui->menu_open->setEnabled(false);
     switch (id_device) {
     case id_sdrplay:
-        start_sdrplay();
+
+        if(start_sdrplay() != 0) return;
+
         dvbt2 = ptr_sdrplay->frame;
         break;
+
     case id_airspy:
-        start_airspy();
+
+        if(start_airspy() != 0) return;
+
         dvbt2 = ptr_airspy->frame;
+        break;
+
+    case id_plutosdr:
+
+        if(start_plutosdr() != 0) return;
+
+        dvbt2 = ptr_plutosdr->frame;
         break;
     }
     for(int i = 1; i < ui->tab_widget->count(); ++i) ui->tab_widget->setTabEnabled(i, true);
     connect_info();
-    ui->menu_open->setEnabled(false);
     ui->push_button_start->setEnabled(false);
     ui->line_edit_rf->setEnabled(false);
     ui->line_edit_gain->setEnabled(false);
     ui->check_box_agc->setEnabled(false);
+    ui->push_button_stop->setEnabled(true);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::connect_info()
 {
     connect(dvbt2->p1_demod, &p1_symbol::bad_signal, this, &main_window::bad_signal);
@@ -225,7 +310,7 @@ void main_window::connect_info()
     connect(this, &main_window::set_out,
             dvbt2->deinterleaver->qam->decoder->decoder->deheader, &bb_de_header::set_out);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::bad_signal()
 {
     if(ui->push_button_stop->isEnabled()) {
@@ -235,7 +320,7 @@ void main_window::bad_signal()
         mes_box.exec();
     }
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_push_button_stop_clicked()
 {
     disconnect_signals();
@@ -255,10 +340,10 @@ void main_window::on_push_button_stop_clicked()
     ui->label_info_gain->setText("gain reducton (dB) : ");
     ui->menu_open->setEnabled(true);
     ui->line_edit_rf->setEnabled(true);
-    ui->line_edit_gain->setEnabled(true);
+//    ui->line_edit_gain->setEnabled(true);
     ui->check_box_agc->setEnabled(true);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::disconnect_info()
 {
     disconnect(dvbt2->p1_demod, &p1_symbol::bad_signal, this, &main_window::bad_signal);
@@ -273,13 +358,13 @@ void main_window::disconnect_info()
     disconnect(this, &main_window::set_out,
                dvbt2->deinterleaver->qam->decoder->decoder->deheader, &bb_de_header::set_out);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::radio_frequency(double _rf)
 {
     ui->label_info_rf->setText("radio frequency (Hz) : " + QString::number(_rf, 'f', 0));
 }
-//----------------------------------------------------------------------------------------------------
-void main_window::device_gain(int _gain)
+//---------------------------------------------------------------------------------------------------------------------------------
+void main_window::level_gain(int _gain)
 {
     QString str_gain = "";
     switch (id_device) {
@@ -289,10 +374,13 @@ void main_window::device_gain(int _gain)
     case id_airspy:
         str_gain = "gain :   ";
         break;
+    case id_plutosdr:
+        str_gain = "gain :   ";
+        break;
     }
     ui->label_info_gain->setText(str_gain + QString::number(_gain));
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_tab_widget_currentChanged(int index)
 {
 
@@ -339,7 +427,7 @@ void main_window::on_tab_widget_currentChanged(int index)
         break;
     }
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::disconnect_signals()
 {
     disconnect(dvbt2->p1_demod, &p1_symbol::replace_spectrograph,
@@ -367,7 +455,7 @@ void main_window::disconnect_signals()
     disconnect(dvbt2->p2_demod, &p2_symbol::replace_oscilloscope,
                equalizer_oscilloscope, &plot::replace_oscilloscope);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::set_show_p2_symbol(int _id)
 {
     switch(_id){
@@ -382,7 +470,7 @@ void main_window::set_show_p2_symbol(int _id)
         break;
     }
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::amount_plp(int _num_plp)
 {
     ui->combo_box_plp_id->clear();
@@ -390,29 +478,29 @@ void main_window::amount_plp(int _num_plp)
     ui->combo_box_ts_plp->clear();
     for(int i = 0; i < _num_plp; ++i) ui->combo_box_ts_plp->addItem(QString::number(i));
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_combo_box_plp_id_currentIndexChanged(int index)
 {
     dvbt2->deinterleaver->idx_show_plp = index;
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::signal_noise_ratio(float _snr)
 {
     ui->label_snr->setText("SNR : " + QString::number(static_cast<int>(_snr)) + "dB");
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::view_l1_presignalling(QString _text)
 {
     ui->text_edit_l1_presignalling->clear();
     ui->text_edit_l1_presignalling->append(_text);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::view_l1_postsignalling(QString _text)
 {
     ui->text_edit_l1_postsignalling->clear();
     ui->text_edit_l1_postsignalling->append(_text);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::view_l1_dynamic(QString _text, bool _force_update)
 {
     static bool update = true;
@@ -423,13 +511,13 @@ void main_window::view_l1_dynamic(QString _text, bool _force_update)
     }
     if(_force_update) update = true;
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::ts_stage(QString _info)
 {
     static QString old_stage = "";
     static int count = 0;
     QString info = "";
-    ui->text_edit_ts_stage->clear();
+//    ui->text_edit_ts_stage->clear();
     if(_info != old_stage) {  
         info = _info;
         old_stage = _info;
@@ -441,7 +529,7 @@ void main_window::ts_stage(QString _info)
     }
     ui->text_edit_ts_stage->append(info);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_push_button_ts_apply_clicked()
 {
     bb_de_header::id_out id_current_out = bb_de_header::out_network;
@@ -461,13 +549,13 @@ void main_window::on_push_button_ts_apply_clicked()
 
     ui->push_button_ts_apply->setEnabled(false);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_combo_box_ts_plp_currentIndexChanged(const QString &arg1)
 {
     Q_UNUSED(arg1)
     ui->push_button_ts_apply->setEnabled(true);
 }
-//---------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_radio_button_ts_net_toggled(bool checked)
 {
     if(checked) {
@@ -478,19 +566,19 @@ void main_window::on_radio_button_ts_net_toggled(bool checked)
         ui->line_edit_ts_udp_port->setEnabled(false);
     }
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_line_edit_ts_udp_port_textChanged(const QString &arg1)
 {
     Q_UNUSED(arg1)
     ui->push_button_ts_apply->setEnabled(true);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_radio_button_ts_file_toggled(bool checked)
 {
     if(checked) ui->push_button_ts_open_file->setEnabled(true);
     else ui->push_button_ts_open_file->setEnabled(false);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 void main_window::on_push_button_ts_open_file_clicked()
 {
     QString file_name = "";
@@ -499,6 +587,6 @@ void main_window::on_push_button_ts_open_file_clicked()
     if(file_name != "") ui->push_button_ts_apply->setEnabled(true);
     else ui->radio_button_ts_net->setChecked(false);
 }
-//----------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------------------
 
 

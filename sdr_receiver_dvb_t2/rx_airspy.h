@@ -16,17 +16,17 @@ public:
     explicit rx_airspy(QObject *parent = nullptr);
     ~rx_airspy();
 
-    string	error_airspy (int err);
-    int get_airspy(string &_ser_no, string &_hw_ver);
-    int init_airspy(uint32_t _rf_frequence_hz, int _gain);
+    string error (int err);
+    int get(string &_ser_no, string &_hw_ver);
+    int init(uint32_t _rf_frequence_hz, int _gain);
     dvbt2_frame* frame;
     void rx_execute(int16_t *_ptr_rx_buffer, int _len_out_device);
 
 signals:
     void execute(int _len_in, int16_t* _i_in, int16_t* _q_in, bool _frequence_changed, bool _gain_changed);
-    void airspy_status(int _err);
+    void status(int _err);
     void radio_frequency(double _rf);
-    void device_gain(int _gain);
+    void level_gain(int _gain);
     void stop_demodulator();
     void finished();
 
@@ -38,16 +38,12 @@ private:
     QThread* thread;
     QWaitCondition* signal_out;
     QMutex* mutex_out;
-    int airspy_error;
+    int err;
     uint64_t serials[10];
     struct airspy_device* device = nullptr;
     int gain;
     uint32_t rf_frequence;
     float sample_rate;
-
-
-//    int max_len_out;
-
 
     int16_t* buffer_a;
     int16_t* buffer_b;
@@ -73,8 +69,6 @@ private:
 
     int  blocks = 1;
     const int max_blocks = 256;
-    const int norm_blocks = 127;
-    const int decrease_blocks = 1;
     int len_buffer = 0;
 
 };

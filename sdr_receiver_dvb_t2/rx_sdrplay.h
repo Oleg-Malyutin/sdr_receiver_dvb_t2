@@ -31,16 +31,17 @@ class rx_sdrplay : public QObject
 public:
     explicit rx_sdrplay(QObject* parent = nullptr);
     ~rx_sdrplay();
-    string	error_sdrplay (int err);
-    mir_sdr_ErrT get_sdrplay(char *&_ser_no, unsigned char &_hw_ver);
-    mir_sdr_ErrT init_sdrplay(double _rf_frequence, int _gain_db);
+
+    string error (int err);
+    mir_sdr_ErrT get(char *&_ser_no, unsigned char &_hw_ver);
+    mir_sdr_ErrT init(double _rf_frequence, int _gain_db);
     dvbt2_frame* frame;
 
 signals:
     void execute(int _len_in, short* _i_in, short* _q_in, bool _frequence_changed, bool _gain_changed);
-    void sdrplay_status(int _err);
+    void status(int _err);
     void radio_frequency(double _rf);
-    void device_gain(int _gain);
+    void level_gain(int _gain);
     void stop_demodulator();
     void finished();
 
@@ -52,7 +53,7 @@ private:
     QThread* thread;
     QWaitCondition* signal_out;
     QMutex* mutex_out;
-    mir_sdr_ErrT sdrplay_error;
+    mir_sdr_ErrT err;
     int gain_db;
     double rf_frequence;
     float sample_rate;

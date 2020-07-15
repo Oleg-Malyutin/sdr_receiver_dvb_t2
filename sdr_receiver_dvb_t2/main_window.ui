@@ -49,16 +49,6 @@
            <string>Info :</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_4">
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_hw_ver">
-             <property name="text">
-              <string>Hardware ver:</string>
-             </property>
-             <property name="textFormat">
-              <enum>Qt::PlainText</enum>
-             </property>
-            </widget>
-           </item>
            <item row="0" column="0">
             <widget class="QLabel" name="label_name">
              <property name="text">
@@ -70,13 +60,6 @@
             <widget class="QLabel" name="label_info_gain">
              <property name="text">
               <string>gain  :</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_ser_no">
-             <property name="text">
-              <string>Serial No : </string>
              </property>
             </widget>
            </item>
@@ -112,6 +95,29 @@
               </size>
              </property>
             </spacer>
+           </item>
+           <item row="1" column="0" colspan="2">
+            <widget class="QLabel" name="label_ser_no">
+             <property name="text">
+              <string>Serial No : </string>
+             </property>
+             <property name="textFormat">
+              <enum>Qt::PlainText</enum>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0" colspan="2">
+            <widget class="QLabel" name="label_hw_ver">
+             <property name="text">
+              <string>Hardware ver:</string>
+             </property>
+             <property name="textFormat">
+              <enum>Qt::PlainText</enum>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
@@ -926,6 +932,7 @@
      </property>
      <addaction name="action_sdrplay"/>
      <addaction name="action_airspy"/>
+     <addaction name="action_plutosdr"/>
     </widget>
     <addaction name="menu_open"/>
     <addaction name="action_exit"/>
@@ -946,6 +953,14 @@
   <action name="action_airspy">
    <property name="text">
     <string>AirSpy</string>
+   </property>
+  </action>
+  <action name="action_plutosdr">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>PlutoSDR</string>
    </property>
   </action>
  </widget>

@@ -19,6 +19,7 @@
 
 #include "rx_sdrplay.h"
 #include "rx_airspy.h"
+#include "rx_plutosdr.h"
 #include "plot.h"
 #include "DVB_T2/dvbt2_frame.h"
 
@@ -36,6 +37,9 @@ public:
     main_window(QWidget *parent = nullptr);
     ~main_window();
 
+protected:
+    void closeEvent(QCloseEvent *event);
+
 signals:
     void p2_show(int _id_show);
     void set_out(bb_de_header::id_out _id_current_out, int _num_port_udp,
@@ -43,13 +47,17 @@ signals:
     void stop_device();
 
 private slots:
-    void get_device();
     void open_sdrplay();
-    void sdrplay_status(int _err);
-    void airspy_status(int _err);
+    void status_sdrplay(int _err);
+
     void open_airspy();
+    void status_airspy(int _err);
+
+    void open_plutosdr();
+    void status_plutosdr(int _err);
+
     void radio_frequency(double _rf);
-    void device_gain(int _gain);
+    void level_gain(int _gain);
     void bad_signal();
     void on_push_button_start_clicked();
     void on_push_button_stop_clicked();
@@ -79,8 +87,10 @@ private:
     QThread* thread = nullptr;
     rx_sdrplay* ptr_sdrplay;
     rx_airspy* ptr_airspy;
-    void start_sdrplay();
-    void start_airspy();
+    rx_plutosdr* ptr_plutosdr;
+    int start_sdrplay();
+    int start_airspy();
+    int start_plutosdr();
     void connect_info();
     void disconnect_info();
     QButtonGroup* button_group_p2_symbol;

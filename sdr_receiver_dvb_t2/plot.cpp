@@ -16,7 +16,7 @@
 
 #include <QDebug>
 
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 plot::plot(QCustomPlot *_plot, type_graph _type, QString _name, QObject *parent) :
     QObject(parent),
     current_plot(_plot),
@@ -29,12 +29,12 @@ plot::plot(QCustomPlot *_plot, type_graph _type, QString _name, QObject *parent)
     current_plot->plotLayout()->addElement(0, 0, new QCPTextElement(current_plot, name));
     connect(this, SIGNAL(repaint_plot()), current_plot, SLOT(replot()));
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 plot::~plot()
 {
 
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void plot::replace_spectrograph(const int _len_data, complex *_data)
 {
     const int len_data = _len_data;
@@ -51,7 +51,7 @@ void plot::replace_spectrograph(const int _len_data, complex *_data)
 
     emit  repaint_plot();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void plot::replace_constelation(const int _len_data, complex *_data)
 {
     int len_data = _len_data;
@@ -70,7 +70,7 @@ void plot::replace_constelation(const int _len_data, complex *_data)
 
     emit  repaint_plot();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void plot::replace_oscilloscope(const int _len_data, complex *_data)
 {
     const int len_data = _len_data;
@@ -92,7 +92,7 @@ void plot::replace_oscilloscope(const int _len_data, complex *_data)
 
     emit  repaint_plot();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void plot::greate_graph(int _len_data, complex *_data)
 {
     if (check_len_data == _len_data) return;
@@ -121,8 +121,8 @@ void plot::greate_graph(int _len_data, complex *_data)
     case type_constelation:
         current_plot->xAxis->setLabel("Inphase");
         current_plot->yAxis->setLabel("Quadrature");
-        current_plot->xAxis->setRange(-1.5, 1.5);
-        current_plot->yAxis->setRange(-1.5, 1.5);
+        current_plot->xAxis->setRange(-2.0, 2.0);
+        current_plot->yAxis->setRange(-2.0, 2.0);
         current_plot->graph(0)->setLineStyle(QCPGraph::lsNone);
         pen.setWidth(5);
         pen.setColor(Qt::blue);
@@ -193,7 +193,7 @@ void plot::greate_graph(int _len_data, complex *_data)
     current_plot->graph(0)->setAntialiasedFill(false);
     current_plot->graph(0)->data()->clear();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void plot::calc_frame_per_sec()
 {
     //calculate frames per second:
@@ -212,4 +212,4 @@ void plot::calc_frame_per_sec()
         frameCount = 0;
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------

@@ -1,17 +1,17 @@
 #include "rx_airspy.h"
 
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 rx_airspy::rx_airspy(QObject *parent) : QObject(parent)
 {
 
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 rx_airspy::~rx_airspy()
 {
 
 }
-//-----------------------------------------------------------------------------------------------
-string	rx_airspy::error_airspy (int err)
+//----------------------------------------------------------------------------------------------------------------------------
+string rx_airspy::error (int err)
 {
     switch (err) {
     case AIRSPY_SUCCESS:
@@ -27,9 +27,9 @@ string	rx_airspy::error_airspy (int err)
     case AIRSPY_ERROR_NO_MEM:
         return "No memory";
     case AIRSPY_ERROR_LIBUSB:
-        return "Error libusb";
+        return "error libusb";
     case AIRSPY_ERROR_THREAD:
-        return "Error thread";
+        return "error thread";
     case AIRSPY_ERROR_STREAMING_THREAD_ERR:
         return "Streaming thread error";
     case AIRSPY_ERROR_STREAMING_STOPPED:
@@ -40,68 +40,68 @@ string	rx_airspy::error_airspy (int err)
         return std::to_string(err);
     }
 }
-//-----------------------------------------------------------------------------------------------
-int rx_airspy::get_airspy(string &_ser_no, string &_hw_ver)
+//----------------------------------------------------------------------------------------------------------------------------
+int rx_airspy::get(string &_ser_no, string &_hw_ver)
 {
     int count = 1;
-    airspy_error = airspy_list_devices(serials, count);
+    err = airspy_list_devices(serials, count);
 
-    if( airspy_error < 0 ) return airspy_error;
+    if( err < 0 ) return err;
 
     _ser_no = std::to_string(serials[0]);
 
-    airspy_error = airspy_open_sn(&device, serials[0]);
+    err = airspy_open_sn(&device, serials[0]);
 
-    if( airspy_error < 0 ) return airspy_error;
+    if( err < 0 ) return err;
 
     const uint8_t len = 128;
     char version[len];
-    airspy_error = airspy_version_string_read(device, version, len);
+    err = airspy_version_string_read(device, version, len);
 
-    if( airspy_error < 0 ) return airspy_error;
+    if( err < 0 ) return err;
 
     for(int i = 6; i < len; ++i){
         if(version[i] == '\u0000') break;
         _hw_ver += version[i];
     }
 
-    return airspy_error;
+    return err;
 }
-//-----------------------------------------------------------------------------------------------
-int rx_airspy::init_airspy(uint32_t _rf_frequence_hz, int _gain)
+//----------------------------------------------------------------------------------------------------------------------------
+int rx_airspy::init(uint32_t _rf_frequence_hz, int _gain)
 {
 
-    airspy_error = airspy_set_sample_type(device, AIRSPY_SAMPLE_INT16_IQ);
+    err = airspy_set_sample_type(device, AIRSPY_SAMPLE_INT16_IQ);
 
-    if( airspy_error < 0 ) return airspy_error;
+    if( err < 0 ) return err;
 
     sample_rate = 1.0e+7f;
 
-    airspy_error = airspy_set_samplerate(device, static_cast<int>(sample_rate));
+    err = airspy_set_samplerate(device, static_cast<int>(sample_rate));
 
-    if( airspy_error < 0 ) return airspy_error;
+    if( err < 0 ) return err;
 
     uint8_t biast_val = 0;
-    airspy_error = airspy_set_rf_bias(device, biast_val);
+    err = airspy_set_rf_bias(device, biast_val);
 
-    if( airspy_error < 0 ) return airspy_error;
+    if( err < 0 ) return err;
 
     gain = _gain;
     if(gain < 0) {
         gain = 0;
         agc = true;
     }
-    airspy_error =  airspy_set_sensitivity_gain(device, static_cast<uint8_t>(gain));
+    err =  airspy_set_sensitivity_gain(device, static_cast<uint8_t>(gain));
 
-    if( airspy_error < 0 ) return airspy_error;
+    if( err < 0 ) return err;
 
     rf_frequence = _rf_frequence_hz;
-    airspy_error = airspy_set_freq(device, rf_frequence);
+    err = airspy_set_freq(device, rf_frequence);
 
-    if( airspy_error < 0 ) return airspy_error;
+    if( err < 0 ) return err;
 
     emit radio_frequency(rf_frequence);
-    emit device_gain(gain);
+    emit level_gain(gain);
 
     int len_out_device = 65536 * 2;
     int max_len_out = len_out_device * max_blocks;
@@ -123,18 +123,16 @@ int rx_airspy::init_airspy(uint32_t _rf_frequence_hz, int _gain)
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     thread->start();
 
-    return airspy_error;
+    return err;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void rx_airspy::start()
 {
-    airspy_error = airspy_start_rx(device, rx_callback, this);
+    err = airspy_start_rx(device, rx_callback, this);
 
-    if(airspy_error < 0) emit airspy_status(airspy_error);
-
-    qDebug() << "airspy_start_rx airspy_error "<< airspy_error;
+    if(err < 0) emit status(err);
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 int rx_airspy::rx_callback(airspy_transfer_t* transfer)
 {
     if(!transfer) return 0;
@@ -146,11 +144,11 @@ int rx_airspy::rx_callback(airspy_transfer_t* transfer)
     rx_airspy* ctx;
     ctx = static_cast<rx_airspy*>(transfer->ctx);
     ctx->rx_execute(ptr_rx_buffer, len_out_device);
-    if(transfer->dropped_samples > 0) qDebug() << "dropped_samples: " << transfer->dropped_samples;
+    if(transfer->dropped_samples > 0) fprintf(stderr, "dropped_samples: %ld\n", transfer->dropped_samples);
 
     return 0;
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void rx_airspy::rx_execute(int16_t* _ptr_rx_buffer, int _len_out_device)
 {
     int len_out_device = _len_out_device;
@@ -171,8 +169,8 @@ void rx_airspy::rx_execute(int16_t* _ptr_rx_buffer, int _len_out_device)
             float correct = -frequency_offset / static_cast<float>(rf_frequence);
             frame->correct_resample(correct);
             rf_frequence += static_cast<uint32_t>(frequency_offset);
-            airspy_error = airspy_set_freq(device, rf_frequence);
-            if(airspy_error != 0) emit airspy_status(airspy_error);
+            err = airspy_set_freq(device, rf_frequence);
+            if(err != 0) emit status(err);
             frequency_changed = false;
             emit radio_frequency(rf_frequence);
             start_wait_frequency_changed = clock();
@@ -186,10 +184,10 @@ void rx_airspy::rx_execute(int16_t* _ptr_rx_buffer, int _len_out_device)
         if(agc && change_gain) {
             gain_changed = false;
             gain += gain_offset;
-            airspy_error =  airspy_set_sensitivity_gain(device, static_cast<uint8_t>(gain));
-            if(airspy_error != 0) emit airspy_status(airspy_error);
+            err =  airspy_set_sensitivity_gain(device, static_cast<uint8_t>(gain));
+            if(err != 0) emit status(err);
             start_wait_gain_changed = clock();
-            emit device_gain(gain);
+            emit level_gain(gain);
         }
         if(swap_buffer) {
             swap_buffer = false;
@@ -209,7 +207,7 @@ void rx_airspy::rx_execute(int16_t* _ptr_rx_buffer, int _len_out_device)
     else {
         ++blocks;
         if(blocks > max_blocks){
-            qDebug() << "reset buffer:  blocks" << blocks;
+            fprintf(stderr, "reset buffer blocks: %d\n", blocks);
             blocks = 1;
             len_buffer = 0;
             if(swap_buffer) ptr_buffer = buffer_a;
@@ -217,7 +215,7 @@ void rx_airspy::rx_execute(int16_t* _ptr_rx_buffer, int _len_out_device)
         }
     }
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 void rx_airspy::stop()
 {
     airspy_close(device);
@@ -225,5 +223,5 @@ void rx_airspy::stop()
     if(thread->isRunning()) thread->wait(1000);
     emit finished();
 }
-//-----------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------------
 

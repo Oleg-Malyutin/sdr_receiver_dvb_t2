@@ -13,7 +13,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 QT       += core gui
-#QT       += charts multimedia
 QT       += network
 QT       += printsupport
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -55,11 +54,13 @@ SOURCES += \
     libairspy/src/iqconverter_int16.c \
     libairspy/vc/getopt/getopt.c \
     libairspy/vc/getopt/getopt1.c \
+    libplutosdr/plutosdr_hi_speed_rx.c \
     main.cpp \
     main_window.cpp \
     plot.cpp \
     qcustomplot.cpp \
     rx_airspy.cpp \
+    rx_plutosdr.cpp \
     rx_sdrplay.cpp
 
 HEADERS += \
@@ -99,10 +100,13 @@ HEADERS += \
     libairspy/src/iqconverter_int16.h \
     libairspy/src/win32/airspy.rc \
     libairspy/vc/getopt/getopt.h \
+    libplutosdr/plutosdr_hi_speed_rx.h \
+    libplutosdr/plutosdr_hi_speed_rx_export.h \
     main_window.h \
     plot.h \
     qcustomplot.h \
     rx_airspy.h \
+    rx_plutosdr.h \
     rx_sdrplay.h
 
 FORMS += \
@@ -137,5 +141,9 @@ DISTFILES += \
     libairspy/vc/libs/Win32/libusb-1.0.dll \
     libairspy/vc/libs/Win32/pthreadVCE2.dll \
     libairspy/vc/libs/x64/libusb-1.0.dll \
-    libairspy/vc/libs/x64/pthreadVC2.dll
+    libairspy/vc/libs/x64/pthreadVC2.dll \ \ \
 
+unix:!macx|win32: LIBS += -lssh
+
+RESOURCES += \
+    libplutosdr/pluto_kernel_module.qrc
