@@ -9,9 +9,9 @@ To build the project, you need to install
 the library FFTW3: http://www.fftw.org
 
 Supported devices:
-1. SdrPlay (need to install API/HW DRIVER – V2.*(but not V3.*) from https://www.sdrplay.com) 
+1. SdrPlay (need to install API/HW driver – V2.*(but not V3.*) from https://www.sdrplay.com) 
 2. AirSpy (need to install libusb-1.0 from https://libusb.info)
-3. ..
+3. PlutoSDR (with kernlel patch for plutosdr-fw 0.31)
 
 
 Received DVB-T2 signal parameters:
@@ -41,3 +41,6 @@ https://www.qcustomplot.com/
 
 The LDPC block is a port of the code in:
 https://github.com/drmpeg/gr-dvbs2rx
+
+The PLUTOSDR kernel patch has been ported and modified from:
+https://github.com/Hoernchen/plutosdr-fw
