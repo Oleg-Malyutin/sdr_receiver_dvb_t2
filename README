@@ -11,7 +11,7 @@ the library FFTW3: http://www.fftw.org
 Supported devices:
 1. SdrPlay (need to install API/HW driver – V2.*(but not V3.*) from https://www.sdrplay.com) 
 2. AirSpy (need to install libusb-1.0 from https://libusb.info)
-3. PlutoSDR (with kernlel patch for plutosdr-fw 0.31)
+3. PlutoSDR (with kernel patch for plutosdr-fw 0.31)
 
 
 Received DVB-T2 signal parameters:
