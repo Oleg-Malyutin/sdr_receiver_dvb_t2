@@ -185,7 +185,7 @@ void rx_plutosdr::rx_execute(int16_t* _rx_i, int16_t* _rx_q)
         if(change_frequency) {
             float correct = -frequency_offset / static_cast<float>(rf_frequency);
             frame->correct_resample(correct);
-            rf_frequency += static_cast<uint64_t>(frequency_offset);
+            rf_frequency += static_cast<int64_t>(frequency_offset);
             err = plutosdr_set_rxlo(device, rf_frequency);
             if(err < 0) emit status(err);
             frequency_changed = false;
