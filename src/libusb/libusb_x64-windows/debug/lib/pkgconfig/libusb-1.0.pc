@@ -1,0 +1,12 @@
+prefix=${pcfiledir}/../..
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/../include
+
+Name: libusb-1.0
+Description: C API for USB device access from Linux, Mac OS X, Windows, OpenBSD/NetBSD and Solaris userspace
+Version: 1.0.26
+Libs: "-L${libdir}" -llibusb-1.0
+Libs.private: 
+Cflags: "-I${includedir}/libusb-1.0"
+

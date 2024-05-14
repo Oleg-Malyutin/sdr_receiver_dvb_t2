@@ -1,0 +1,8 @@
+Package: libusb
+Version: 1.0.26.11791
+Port-Version: 3
+Depends: vcpkg-msbuild
+Architecture: x64-windows
+Multi-Arch: same
+Abi: f2244d05c60883a8ce44a7ebcccb3735ccf59333baa187f9676c71c8c8b77506
+Description: a cross-platform library to access USB devices
