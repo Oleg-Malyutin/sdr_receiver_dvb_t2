@@ -1,6 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>plutousbgadget.ko</file>
-        <file>runme.sh</file>
-    </qresource>
-</RCC>
