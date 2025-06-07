@@ -1,6 +1,6 @@
-# This file is part of sdr_receiver_dvb_t2
-# Author: Oleg Malyutin
-# Email: <oleg.radioprograms@gmail.com>
+# sdr_receiver_dvb_t2
+Author: Oleg Malyutin
+Email: <oleg.radioprograms@gmail.com>
 
 This is a Software Defined Radio(SDR) project implementing a DVB-T2 receiver.
 
