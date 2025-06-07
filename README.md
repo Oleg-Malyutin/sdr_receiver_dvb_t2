@@ -25,6 +25,7 @@ Not supported:
 Tested configurations:
 OS: Linux Mint 20 Ulyana 64-bit. Windows 10 22H2
 Processor: Intel© Core™ i5-8600 CPU @ 3.10GHz × 6
+
 Used in the project Qt C++ widget QCustomPlot
 (necessary files are included in the project):
 https://www.qcustomplot.com/
